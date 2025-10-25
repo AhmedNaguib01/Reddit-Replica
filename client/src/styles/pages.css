@@ -1,0 +1,460 @@
+/* ========================================
+  == Page-Specific CSS Refactor & Animations ==
+  ========================================
+*/
+
+/* == 1. New Page-Load Animation ==
+  This will apply to all main page containers
+  for a smooth navigation feel.
+*/
+@keyframes fadeInPage {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* == 2. Global Page Layouts (DRY) ==
+  Consolidated .page-grid and other styles.
+*/
+.page-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  /* NEW: Page load animation */
+  animation: fadeInPage 300ms var(--transition-main) forwards;
+}
+@media (min-width: 768px) {
+  .page-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+.page-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.page-error {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+/* == 3. Base Card Style (DRY + Animation) ==
+  Applying base styles and hover-lift to all
+  card-like containers on your pages.
+*/
+.community-card,
+.sidebar-card,
+.auth-card,
+.post-detail,
+.profile-card,
+.search-card,
+.search-post {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  /* NEW: Add transition for hover lift */
+  transition: transform var(--transition-main),
+    box-shadow var(--transition-main);
+}
+
+.community-card:hover,
+.sidebar-card:hover,
+.auth-card:hover,
+.post-detail:hover,
+.profile-card:hover,
+.search-card:hover,
+.search-post:hover {
+  /* NEW: Add hover lift effect */
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ========================================
+  == 4. Refactored Page-Specific Styles ==
+  ========================================
+*/
+
+/* --- Community Page --- */
+.community-card {
+  max-width: 640px;
+  margin: 2.5rem auto;
+  padding: 2rem;
+  /* NEW: Page load animation */
+  animation: fadeInPage 300ms var(--transition-main) forwards;
+}
+
+.community-card__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.community-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.community-form__label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.community-form__textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  resize: vertical;
+  /* NEW: Add focus transition */
+  transition: border-color var(--transition-main),
+    box-shadow var(--transition-main);
+}
+.community-form__textarea:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--border-color-focus);
+}
+
+/* --- Create Post Page --- */
+.create-post-page {
+  max-width: 768px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  /* NEW: Page load animation */
+  animation: fadeInPage 300ms var(--transition-main) forwards;
+}
+
+/* Assumes .create-post component styles are already applied */
+.create-post-page .create-post {
+  /* These styles override the component default if needed */
+  background: var(--bg-primary);
+  padding: 1.25rem;
+  border-radius: var(--radius-lg); /* Larger radius for page */
+  border: 1px solid var(--border-color-light);
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Home Page Sidebar --- */
+.sidebar-card {
+  padding: 1rem;
+}
+.sidebar-title {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+.sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid transparent;
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem;
+  border-radius: var(--radius-md);
+  /* NEW: Add transition */
+  transition: background-color var(--transition-main);
+}
+.sidebar-item:hover {
+  background-color: var(--bg-page);
+}
+
+.sidebar-rank {
+  font-weight: 700;
+}
+.sidebar-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  color: var(--text-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.sidebar-link {
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: color var(--transition-main);
+}
+.sidebar-link:hover {
+  text-decoration: underline;
+  color: var(--color-primary);
+}
+
+/* --- Login/Register Page --- */
+.auth-card {
+  max-width: 28rem;
+  margin: 2.5rem auto;
+  padding: 1.5rem;
+  /* NEW: Page load animation */
+  animation: fadeInPage 300ms var(--transition-main) forwards;
+}
+.auth-card__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.auth-error {
+  color: var(--color-danger);
+  font-size: 0.875rem;
+}
+.auth-form__foot {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.auth-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: text-decoration var(--transition-main);
+}
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Post Detail Page --- */
+
+.post-detail__votes {
+  background: var(--bg-secondary);
+  padding: 0.75rem 0.5rem;
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+  
+  /* NEW: Add flex properties to align the vote buttons */
+  display: flex;
+  justify-content: flex-start; /* Align child to the top */
+  align-items: center;     /* Align child to the center (horizontally) */
+}
+.post-detail__content {
+  padding: 1rem;
+  flex: 1;
+}
+.post-detail__meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+.post-detail__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+.post-detail__body {
+  color: var(--text-primary);
+  white-space: pre-wrap; /* Preserves line breaks */
+}
+.post-detail__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.post-detail__commentsCount {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding: 0.25rem;
+}
+.post-detail__textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--radius-md);
+  /* NEW: Add focus transition */
+  transition: border-color var(--transition-main),
+    box-shadow var(--transition-main);
+}
+.post-detail__textarea:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--border-color-focus);
+}
+.post-detail__commentForm {
+  margin-top: 1.5rem;
+}
+.post-detail__comments {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.comment-row {
+  display: flex;
+}
+.comment-row__body {
+  flex: 1;
+}
+.comment-row__meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.comment-row__author {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: color var(--transition-main);
+}
+.comment-row__author:hover {
+  text-decoration: underline;
+  color: var(--color-primary);
+}
+.comment-row__time {
+  color: var(--text-muted);
+}
+.comment-row__text {
+  color: var(--text-primary);
+}
+
+/* --- Profile Page --- */
+.profile-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.profile-card {
+  padding: 1rem;
+  text-align: center;
+}
+.profile-avatar {
+  width: 5rem;
+  height: 5rem;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem auto;
+}
+.profile-avatar__icon {
+  width: 3rem;
+  height: 3rem;
+  color: var(--text-on-primary);
+}
+.profile-name {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+.profile-joined {
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+/* --- Search Results Page --- */
+.search-page {
+  max-width: 48rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  /* NEW: Page load animation */
+  animation: fadeInPage 300ms var(--transition-main) forwards;
+}
+.search-page__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.search-section {
+  background: transparent;
+}
+.search-section__heading {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.search-card {
+  /* Base card styles already applied */
+  overflow: hidden; /* To make children round */
+}
+.search-item {
+  padding: 1rem;
+  border-top: 1px solid var(--border-color-light);
+  /* NEW: Add transition */
+  transition: background-color var(--transition-main);
+}
+.search-item:first-child {
+  border-top: none;
+}
+.search-item:hover {
+  background-color: var(--bg-page);
+}
+.search-item__link {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: color var(--transition-main);
+}
+.search-item__link:hover {
+  color: var(--color-primary);
+}
+.search-item__desc {
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+.search-item__meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+.search-post {
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+.search-post__title {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: color var(--transition-main);
+}
+.search-post__title:hover {
+  color: var(--color-primary);
+}
+.search-post__body {
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+.search-empty {
+  color: var(--text-muted);
+  padding: 1rem;
+  text-align: center;
+}
+
+/* --- Utility Classes --- */
+.full-width {
+  width: 100%;
+}
+.mt-4 {
+  margin-top: 1rem;
+}
