@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Post from '../components/post/Post';
-import { postsAPI, communitiesAPI } from '../services/api';
+import { postsAPI, communitiesAPI, usersAPI } from '../services/api';
 import '../styles/SearchResultsPage.css';
 
 const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
@@ -10,18 +10,21 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
   const query = searchParams.get('q') || '';
   const [posts, setPosts] = useState([]);
   const [communities, setCommunities] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [postsData, communitiesData] = await Promise.all([
+        const [postsData, communitiesData, usersData] = await Promise.all([
           postsAPI.getAll(),
-          communitiesAPI.getAll()
+          communitiesAPI.getAll(),
+          query ? usersAPI.search(query) : Promise.resolve([])
         ]);
         setPosts(postsData);
         setCommunities(communitiesData);
+        setUsers(usersData);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -29,7 +32,7 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
       }
     };
     fetchData();
-  }, []);
+  }, [query]);
 
   // Search in posts
   const matchingPosts = posts.filter(post => 
@@ -47,7 +50,7 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
     community.description?.toLowerCase().includes(query.toLowerCase())
   );
 
-  const totalResults = matchingPosts.length + matchingCommunities.length;
+  const totalResults = matchingPosts.length + matchingCommunities.length + users.length;
 
   if (loading) {
     return (
@@ -77,6 +80,25 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
             <div className="no-results">
               <h2>No results found</h2>
               <p>Try different keywords or check your spelling</p>
+            </div>
+          )}
+
+          {/* Users Results */}
+          {users.length > 0 && (
+            <div className="search-section">
+              <h2 className="section-title">Users ({users.length})</h2>
+              <div className="communities-results">
+                {users.map(user => (
+                  <Link to={`/user/${user.username}`} key={user._id || user.username} className="community-result">
+                    <img src={user.avatar} alt={user.username} className="community-result-icon" />
+                    <div className="community-result-info">
+                      <h3>u/{user.username}</h3>
+                      <p>{user.bio || 'No bio'}</p>
+                      <span className="community-members">{user.karma} karma</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
 

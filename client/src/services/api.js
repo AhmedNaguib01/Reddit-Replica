@@ -118,6 +118,8 @@ export const communitiesAPI = {
 export const usersAPI = {
   getByUsername: (username) => apiRequest(`/users/${username}`),
   
+  search: (query) => apiRequest(`/users/search?q=${encodeURIComponent(query)}`),
+  
   follow: (username) => apiRequest(`/users/${username}/follow`, {
     method: 'POST',
   }),

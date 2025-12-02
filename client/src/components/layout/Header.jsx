@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Moon, Sun, Search, X, Plus, LogOut, User, MoreHorizontal, Smartphone, MousePointerClick, Clock, QrCode } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { communitiesAPI } from '../../services/api';
+import { communitiesAPI, usersAPI } from '../../services/api';
 import NotificationsDropdown from './NotificationsDropdown';
 import CreatePostModal from '../post/CreatePostModal';
 import '../../styles/Header.css';
@@ -14,6 +14,7 @@ const SearchBar = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [communities, setCommunities] = useState([]);
+  const [users, setUsers] = useState([]);
   const navigate = useNavigate();
   const searchRef = useRef(null);
 
@@ -30,6 +31,26 @@ const SearchBar = () => {
     fetchCommunities();
   }, []);
 
+  // Search users when query changes
+  useEffect(() => {
+    const searchUsers = async () => {
+      if (!searchQuery.trim()) {
+        setUsers([]);
+        return;
+      }
+      try {
+        const data = await usersAPI.search(searchQuery);
+        setUsers(data);
+      } catch (error) {
+        console.error('Error searching users:', error);
+        setUsers([]);
+      }
+    };
+    
+    const debounce = setTimeout(searchUsers, 300);
+    return () => clearTimeout(debounce);
+  }, [searchQuery]);
+
   // Get suggestions based on query
   const getSuggestions = () => {
     if (!searchQuery.trim()) return { communities: [], users: [] };
@@ -42,11 +63,11 @@ const SearchBar = () => {
       )
       .slice(0, 5);
     
-    return { communities: matchingCommunities, users: [] };
+    return { communities: matchingCommunities, users: users.slice(0, 5) };
   };
 
   const suggestions = getSuggestions();
-  const hasSuggestions = suggestions.communities.length > 0;
+  const hasSuggestions = suggestions.communities.length > 0 || suggestions.users.length > 0;
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -132,6 +153,31 @@ const SearchBar = () => {
                       <div className="suggestion-info">
                         <div className="suggestion-name">r/{community.name}</div>
                         <div className="suggestion-meta">{community.members || community.memberCount} members</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+              
+              {/* Users */}
+              {suggestions.users.length > 0 && (
+                <div className="suggestions-section">
+                  <div className="suggestions-header">Users</div>
+                  {suggestions.users.map(user => (
+                    <Link
+                      key={user._id || user.username}
+                      to={`/user/${user.username}`}
+                      className="suggestion-item"
+                      onClick={() => {
+                        setShowSuggestions(false);
+                        setIsFocused(false);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <img src={user.avatar} alt="" className="suggestion-icon" />
+                      <div className="suggestion-info">
+                        <div className="suggestion-name">u/{user.username}</div>
+                        <div className="suggestion-meta">{user.karma} karma</div>
                       </div>
                     </Link>
                   ))}

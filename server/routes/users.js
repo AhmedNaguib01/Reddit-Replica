@@ -10,6 +10,28 @@ const { notifyFollow } = require('../utils/notifications');
 
 const router = express.Router();
 
+// GET /api/users/search - Search users by username
+router.get('/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim().length < 1) {
+      return res.status(200).json([]);
+    }
+
+    const users = await User.find({
+      username: { $regex: q.trim(), $options: 'i' }
+    })
+    .select('-password')
+    .limit(10);
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // PUT /api/users/profile - Update own profile (protected) - MUST BE BEFORE /:username
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
