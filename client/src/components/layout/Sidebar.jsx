@@ -117,6 +117,12 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                   <span className="sidebar-badge">{joinedCommunities.length}</span>
                 )}
               </Link>
+              
+              {/* All Communities Link */}
+              <Link to="/communities" className="sidebar-link">
+                <Users size={18} className="sidebar-icon" />
+                <span className="sidebar-text">Communities</span>
+              </Link>
             </div>
             <hr className="sidebar-divider" />
           </>
@@ -169,20 +175,6 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
           </>
         )}
 
-        {/* All Communities Link */}
-        {!isCollapsed && (
-          <>
-            <div className="sidebar-section">
-              <Link to="/communities" className="sidebar-link communities-expand-btn">
-                <Users size={18} className="sidebar-icon" />
-                <span className="sidebar-text">Communities</span>
-                <ChevronDown size={16} className="expand-icon" />
-              </Link>
-            </div>
-            <hr className="sidebar-divider" />
-          </>
-        )}
-
         {/* Resources Section */}
         {!isCollapsed && (
           <>
@@ -212,10 +204,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
         {/* Footer */}
         {!isCollapsed && (
           <div className="sidebar-footer">
-            <p>
-              <Link to="/rules">Reddit Rules</Link> · <Link to="/privacy">Privacy Policy</Link>
-            </p>
-            <p>© 2025 Reddit, Inc.</p>
+            <p>Reddit, Inc. © 2025. All rights reserved.</p>
           </div>
         )}
 

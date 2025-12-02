@@ -136,6 +136,16 @@
   cursor: pointer;
 }
 
+.footer-link {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
+
 .copyright {
   margin: 0;
 }

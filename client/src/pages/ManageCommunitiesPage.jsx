@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import Sidebar from '../components/layout/Sidebar';
 import { communitiesAPI } from '../services/api';
 import '../styles/ManageCommunitiesPage.css';
+import '../styles/CommunityPage.css';
 
 const ManageCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const [communities, setCommunities] = useState([]);
@@ -72,9 +73,9 @@ const ManageCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSideb
 
   if (!currentUser) {
     return (
-      <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-        <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-          <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      <div className="page-layout">
+        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+        <div className="page-content-wrapper">
           <div style={{ flex: 1, padding: '40px', textAlign: 'center' }}>
             <h2>Please log in to manage communities</h2>
             <button onClick={onAuthAction} className="btn-login">Log In</button>
@@ -85,11 +86,11 @@ const ManageCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSideb
   }
 
   return (
-    <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
-        
-        <div style={{ flex: 1, padding: '20px 24px' }}>
+    <div className="page-layout">
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      
+      <div className="page-content-wrapper">
+        <div style={{ flex: 1, padding: '20px 24px', maxWidth: '1010px' }}>
           <button onClick={() => navigate(-1)} className="back-btn">
             <ArrowLeft size={16} /> Back
           </button>

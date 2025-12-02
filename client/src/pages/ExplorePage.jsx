@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import { communitiesAPI } from '../services/api';
 import '../styles/ExplorePage.css';
+import '../styles/CommunityPage.css';
 
 const communityCategories = ['All', 'Entertainment', 'Gaming', 'News', 'Sports', 'Technology', 'Q&As & Stories', 'Art & Design', 'Music', 'Science', 'Education', 'Lifestyle', 'Other'];
 
@@ -31,11 +32,11 @@ const ExplorePage = ({ isSidebarCollapsed, onToggleSidebar }) => {
     : communities.filter(c => c.category === selectedCategory);
 
   return (
-    <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
-        
-        <div style={{ flex: 1, padding: '20px 24px' }}>
+    <div className="page-layout">
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      
+      <div className="page-content-wrapper">
+        <div style={{ flex: 1, padding: '20px 24px', maxWidth: '1010px' }}>
           <h1 className="explore-title">Explore Communities</h1>
           
           {/* Category Filters */}

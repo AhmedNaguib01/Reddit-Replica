@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import Sidebar from '../components/layout/Sidebar';
 import { communitiesAPI } from '../services/api';
 import '../styles/AllCommunitiesPage.css';
+import '../styles/CommunityPage.css';
 
 const AllCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const [communities, setCommunities] = useState([]);
@@ -86,11 +87,11 @@ const AllCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar 
   };
 
   return (
-    <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
-        
-        <div style={{ flex: 1, padding: '20px 24px' }}>
+    <div className="page-layout">
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      
+      <div className="page-content-wrapper">
+        <div style={{ flex: 1, padding: '20px 24px', maxWidth: '1010px' }}>
           <button onClick={() => navigate(-1)} className="back-btn">
             <ArrowLeft size={16} /> Back
           </button>

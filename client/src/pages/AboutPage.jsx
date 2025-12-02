@@ -27,7 +27,7 @@ const AboutPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
       
       <h2>Team Members</h2>
       <ul>
-        <li>Ahmed Mohamed Naguib</li>
+        <li>Ahmed Mohamed - Leader</li>
         <li>Omar Montaser</li>
         <li>Ferass Ahmed</li>
         <li>Omar Tarek</li>

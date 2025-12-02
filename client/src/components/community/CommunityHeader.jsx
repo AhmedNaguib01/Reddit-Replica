@@ -155,9 +155,6 @@ const CommunityHeader = ({
         <div className="content-wrapper">
             <div className="tab-list">
                 <a href="#" className="tab-link active">Posts</a>
-                <a href="#" className="tab-link">Wiki</a>
-                <a href="#" className="tab-link">Rules</a>
-                <a href="#" className="tab-link">FAQ</a>
             </div>
         </div>
       </div>

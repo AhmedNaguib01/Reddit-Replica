@@ -4,6 +4,7 @@ import Sidebar from '../components/layout/Sidebar';
 import Post from '../components/post/Post';
 import { postsAPI, communitiesAPI, usersAPI } from '../services/api';
 import '../styles/SearchResultsPage.css';
+import '../styles/CommunityPage.css';
 
 const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const [searchParams] = useSearchParams();
@@ -54,9 +55,9 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-        <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-          <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      <div className="page-layout">
+        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+        <div className="page-content-wrapper">
           <div style={{ flex: 1, padding: '20px 24px', textAlign: 'center' }}>
             Loading...
           </div>
@@ -66,11 +67,11 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
   }
 
   return (
-    <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
-        
-        <div style={{ flex: 1, padding: '20px 24px' }}>
+    <div className="page-layout">
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      
+      <div className="page-content-wrapper">
+        <div style={{ flex: 1, padding: '20px 24px', maxWidth: '1010px' }}>
           <div className="search-header">
             <h1 className="search-title">Search results for "{query}"</h1>
             <p className="search-count">{totalResults} results found</p>

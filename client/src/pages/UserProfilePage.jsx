@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import Sidebar from '../components/layout/Sidebar';
 import { UserProfileSkeleton, PostListSkeleton } from '../components/common/LoadingSkeleton';
 import EditProfileModal from '../components/user/EditProfileModal';
-import { postsAPI, usersAPI, commentsAPI, customFeedsAPI } from '../services/api';
-import { MessageSquare, Cake, Award, Bookmark, Settings, LayoutGrid } from 'lucide-react';
+import { postsAPI, usersAPI, commentsAPI, customFeedsAPI, chatsAPI } from '../services/api';
+import { MessageSquare, Cake, Award, Bookmark, Settings, LayoutGrid, MessageCircle } from 'lucide-react';
 import usePageTitle from '../hooks/usePageTitle';
 import '../styles/UserProfilePage.css';
 
 const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const { username } = useParams();
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const [user, setUser] = useState(null);
@@ -201,7 +202,22 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
                     Edit
                   </button>
                 ) : (
-                  <button className="btn-profile-action btn-secondary">
+                  <button 
+                    className="btn-profile-action btn-secondary"
+                    onClick={async () => {
+                      if (!currentUser) {
+                        onAuthAction();
+                        return;
+                      }
+                      try {
+                        const result = await chatsAPI.create(username);
+                        navigate('/chat', { state: { chatId: result.id, otherUser: result.otherUser } });
+                      } catch (error) {
+                        showToast(error.message, 'error');
+                      }
+                    }}
+                  >
+                    <MessageCircle size={16} />
                     Chat
                   </button>
                 )}

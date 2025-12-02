@@ -7,6 +7,7 @@ import { PostListSkeleton } from '../components/common/LoadingSkeleton';
 import { postsAPI, communitiesAPI } from '../services/api';
 import { Bookmark } from 'lucide-react';
 import '../styles/SavedPostsPage.css';
+import '../styles/CommunityPage.css';
 
 const SavedPostsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const [savedPosts, setSavedPosts] = useState([]);
@@ -40,9 +41,9 @@ const SavedPostsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
 
   if (!currentUser) {
     return (
-      <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-        <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-          <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      <div className="page-layout">
+        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+        <div className="page-content-wrapper">
           <div style={{ flex: 1, padding: '20px 24px', textAlign: 'center' }}>
             <h2>Please log in to view saved posts</h2>
             <button onClick={onAuthAction} className="btn-browse">Log In</button>
@@ -54,9 +55,9 @@ const SavedPostsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-        <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-          <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      <div className="page-layout">
+        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+        <div className="page-content-wrapper">
           <div style={{ flex: 1, padding: '20px 24px' }}>
             <div className="saved-header">
               <div className="saved-title-section">
@@ -82,11 +83,11 @@ const SavedPostsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
   });
 
   return (
-    <div style={{ display: 'flex', backgroundColor: 'var(--color-bg-page)', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', width: '100%', maxWidth: '1280px', margin: '0 auto' }}>
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
-        
-        <div style={{ flex: 1, padding: '20px 24px' }}>
+    <div className="page-layout">
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
+      
+      <div className="page-content-wrapper">
+        <div style={{ flex: 1, padding: '20px 24px', maxWidth: '1010px' }}>
           <div className="saved-header">
             <div className="saved-title-section">
               <Bookmark size={28} />

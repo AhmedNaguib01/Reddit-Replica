@@ -183,3 +183,24 @@ export const customFeedsAPI = {
     method: 'DELETE',
   }),
 };
+
+// Chats API
+export const chatsAPI = {
+  getAll: () => apiRequest('/chats'),
+  
+  getUnreadCount: () => apiRequest('/chats/unread-count'),
+  
+  create: (username) => apiRequest('/chats', {
+    method: 'POST',
+    body: JSON.stringify({ username }),
+  }),
+  
+  getById: (chatId) => apiRequest(`/chats/${chatId}`),
+  
+  getMessages: (chatId) => apiRequest(`/chats/${chatId}/messages`),
+  
+  sendMessage: (chatId, content) => apiRequest(`/chats/${chatId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  }),
+};

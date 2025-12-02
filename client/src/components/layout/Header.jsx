@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Moon, Sun, Search, X, Plus, LogOut, User, MoreHorizontal, Smartphone, MousePointerClick, Clock, QrCode } from 'lucide-react';
+import { Moon, Sun, Search, X, Plus, LogOut, User, MoreHorizontal, Smartphone, QrCode, MessageCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { communitiesAPI, usersAPI } from '../../services/api';
@@ -243,15 +243,6 @@ const GuestMenu = ({ onLoginClick }) => {
               <Smartphone size={20} />
               <span>Log In / Sign Up</span>
             </button>
-            <Link to="/advertise" className="guest-menu-item" onClick={() => setIsMenuOpen(false)}>
-              <MousePointerClick size={20} />
-              <span>Advertise on Reddit</span>
-            </Link>
-            <Link to="/premium" className="guest-menu-item" onClick={() => setIsMenuOpen(false)}>
-              <Clock size={20} />
-              <span>Try Reddit Pro</span>
-              <span className="beta-badge">BETA</span>
-            </Link>
           </div>
         )}
       </div>
@@ -295,6 +286,12 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
         >
           <Plus size={20} />
         </button>
+
+        {currentUser && (
+          <Link to="/chat" className="btn btn-icon" aria-label="Messages" title="Messages">
+            <MessageCircle size={20} />
+          </Link>
+        )}
 
         {currentUser && <NotificationsDropdown />}
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { X, Smartphone, Globe, Apple } from 'lucide-react';
 import '../../styles/LoginModal.css';
@@ -71,7 +72,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         <div className="modal-header">
           <h2>{isSignUp ? 'Sign Up' : 'Log In'}</h2>
           <p className="legal-text">
-            By continuing, you agree to our <a href="#">User Agreement</a> and acknowledge that you understand the <a href="#">Privacy Policy</a>.
+            By continuing, you agree to our <Link to="/user-agreement" onClick={onClose}>User Agreement</Link> and acknowledge that you understand the <Link to="/privacy" onClick={onClose}>Privacy Policy</Link>.
           </p>
         </div>
 

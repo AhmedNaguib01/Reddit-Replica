@@ -136,9 +136,9 @@ const RightSidebar = ({ communityData, onCreatePost }) => {
       
       <div className="right-sidebar-footer">
         <div className="footer-links">
-          <p>Reddit Rules</p>
-          <p>Privacy Policy</p>
-          <p>User Agreement</p>
+          <Link to="/rules" className="footer-link">Reddit Rules</Link>
+          <Link to="/privacy" className="footer-link">Privacy Policy</Link>
+          <Link to="/user-agreement" className="footer-link">User Agreement</Link>
         </div>
         <p className="copyright">Reddit, Inc. © 2025. All rights reserved.</p>
       </div>

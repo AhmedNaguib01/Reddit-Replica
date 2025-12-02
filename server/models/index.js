@@ -6,6 +6,7 @@ const Vote = require('./Vote');
 const UserActivity = require('./UserActivity');
 const Notification = require('./Notification');
 const CustomFeed = require('./CustomFeed');
+const Chat = require('./Chat');
 
 module.exports = {
   User,
@@ -15,5 +16,6 @@ module.exports = {
   Vote,
   UserActivity,
   Notification,
-  CustomFeed
+  CustomFeed,
+  Chat
 };

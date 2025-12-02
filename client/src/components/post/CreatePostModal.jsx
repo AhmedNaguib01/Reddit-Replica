@@ -19,18 +19,14 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
 
-  // Fetch communities and joined communities when modal opens
+  // Fetch only joined communities when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && currentUser) {
       const fetchData = async () => {
         try {
-          const allCommunities = await communitiesAPI.getAll();
-          setCommunities(allCommunities || []);
-          
-          if (currentUser) {
-            const joined = await communitiesAPI.getJoined();
-            setJoinedCommunities((joined || []).map(c => c.name));
-          }
+          const joined = await communitiesAPI.getJoined();
+          setCommunities(joined || []);
+          setJoinedCommunities((joined || []).map(c => c.name));
         } catch (error) {
           console.error('Error fetching communities:', error);
           showToast('Failed to load communities', 'error');
@@ -146,12 +142,6 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
       return;
     }
 
-    // Check if user is member of the community (only for header create post)
-    if (!subreddit && !isUserMember(targetCommunity)) {
-      setShowJoinPrompt(true);
-      return;
-    }
-
     await submitPost();
   };
 
@@ -200,11 +190,15 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
                 disabled={loading}
               >
                 <option value="">Choose a community *</option>
-                {communities.map(community => (
-                  <option key={community._id || community.name} value={community.name}>
-                    r/{community.name}
-                  </option>
-                ))}
+                {communities.length === 0 ? (
+                  <option value="" disabled>Join a community first to post</option>
+                ) : (
+                  communities.map(community => (
+                    <option key={community._id || community.name} value={community.name}>
+                      r/{community.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           )}

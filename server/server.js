@@ -9,6 +9,7 @@ const commentsRoutes = require('./routes/comments');
 const usersRoutes = require('./routes/users');
 const notificationsRoutes = require('./routes/notifications');
 const customFeedsRoutes = require('./routes/customFeeds');
+const chatsRoutes = require('./routes/chats');
 
 // Connect to MongoDB
 connectDB();
@@ -42,6 +43,7 @@ app.use('/api/comments', commentsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/custom-feeds', customFeedsRoutes);
+app.use('/api/chats', chatsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
