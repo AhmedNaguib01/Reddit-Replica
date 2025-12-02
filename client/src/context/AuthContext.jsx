@@ -36,25 +36,14 @@ export const AuthProvider = ({ children }) => {
 
   // Login - to be called after successful backend authentication
   const login = (userData, token) => {
-    setCurrentUser(userData);
     localStorage.setItem('authToken', token);
     window.location.reload();
   };
 
   // Logout
   const logout = async () => {
-    try {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-      });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      setCurrentUser(null);
-      localStorage.removeItem('authToken');
-      window.location.reload();
-    }
+    localStorage.removeItem('authToken');
+    window.location.reload();
   };
 
   // Update user data (for profile edits)

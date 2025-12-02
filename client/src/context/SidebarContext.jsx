@@ -10,19 +10,14 @@ export const SidebarProvider = ({ children }) => {
   const [joinedCommunities, setJoinedCommunities] = useState([]);
   const [customFeeds, setCustomFeeds] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
 
-  const fetchSidebarData = useCallback(async (force = false) => {
+  const fetchSidebarData = useCallback(async () => {
     if (!currentUser) {
       setRecentCommunities([]);
       setJoinedCommunities([]);
       setCustomFeeds([]);
-      setHasFetched(false);
       return;
     }
-
-    // Skip if already fetched and not forcing refresh
-    if (hasFetched && !force) return;
 
     try {
       setLoading(true);
@@ -34,17 +29,16 @@ export const SidebarProvider = ({ children }) => {
       setRecentCommunities(recent);
       setJoinedCommunities(joined);
       setCustomFeeds(feeds);
-      setHasFetched(true);
     } catch (error) {
       console.error('Error fetching sidebar data:', error);
     } finally {
       setLoading(false);
     }
-  }, [currentUser, hasFetched]);
+  }, [currentUser]);
 
   useEffect(() => {
     fetchSidebarData();
-  }, [currentUser]);
+  }, [fetchSidebarData]);
 
   const addCustomFeed = (newFeed) => {
     setCustomFeeds(prev => [newFeed, ...prev]);

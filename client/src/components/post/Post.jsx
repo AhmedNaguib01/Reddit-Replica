@@ -28,12 +28,10 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
   
   const isOwner = currentUser && currentUser.username === post.author;
 
-  // Update local state when post prop changes
+  // Update local post data when post prop changes (but not vote state - that's managed locally)
   useEffect(() => {
-    setLocalVoteCount(post.voteCount ?? (post.upvotes - (post.downvotes || 0)) ?? post.votes ?? 0);
-    setVoteState(post.userVote || null);
     setLocalPost(post);
-  }, [post]);
+  }, [post.title, post.content, post.type, post.editedAt]);
 
   // Close options menu when clicking outside
   useEffect(() => {
@@ -56,15 +54,41 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
       return;
     }
 
+    // Save previous state for rollback
+    const prevVoteState = voteState;
+    const prevVoteCount = localVoteCount;
+
+    // Optimistic update
+    let newVoteState = voteType;
+    let newVoteCount = localVoteCount;
+
+    if (prevVoteState === voteType) {
+      // Clicking same vote removes it
+      newVoteState = null;
+      newVoteCount = voteType === 'up' ? localVoteCount - 1 : localVoteCount + 1;
+    } else if (prevVoteState === null) {
+      // No previous vote
+      newVoteCount = voteType === 'up' ? localVoteCount + 1 : localVoteCount - 1;
+    } else {
+      // Switching vote
+      newVoteCount = voteType === 'up' ? localVoteCount + 2 : localVoteCount - 2;
+    }
+
+    setVoteState(newVoteState);
+    setLocalVoteCount(newVoteCount);
+
     try {
       const postId = post._id || post.id;
       const result = await postsAPI.vote(postId, voteType);
+      // Only sync vote count from server, keep our calculated vote state
       setLocalVoteCount(result.voteCount);
-      setVoteState(result.userVote);
       if (onVoteUpdate) {
         onVoteUpdate(postId, result.voteCount);
       }
     } catch (error) {
+      // Rollback on error
+      setVoteState(prevVoteState);
+      setLocalVoteCount(prevVoteCount);
       console.error('Vote error:', error);
     }
   };

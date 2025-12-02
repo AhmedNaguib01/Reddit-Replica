@@ -261,7 +261,7 @@ const GuestMenu = ({ onLoginClick }) => {
 
 const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, loading } = useAuth();
 
   const handleCreatePostClick = () => {
     if (!currentUser) {
@@ -307,7 +307,12 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
           {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         
-        {currentUser ? (
+        {loading ? (
+          <div className="btn btn-secondary" style={{ opacity: 0.5, pointerEvents: 'none' }}>
+            <User size={16} style={{ marginRight: '4px' }} />
+            ...
+          </div>
+        ) : currentUser ? (
           <>
             <Link to={`/user/${currentUser.username}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
               <User size={16} style={{ marginRight: '4px' }} />
