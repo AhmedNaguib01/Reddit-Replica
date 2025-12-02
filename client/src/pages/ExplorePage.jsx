@@ -4,7 +4,7 @@ import Sidebar from '../components/layout/Sidebar';
 import { communitiesAPI } from '../services/api';
 import '../styles/ExplorePage.css';
 
-const communityCategories = ['All', 'Technology', 'Gaming', 'Entertainment', 'Sports', 'News', 'Q&As & Stories'];
+const communityCategories = ['All', 'Entertainment', 'Gaming', 'News', 'Sports', 'Technology', 'Q&As & Stories', 'Art & Design', 'Music', 'Science', 'Education', 'Lifestyle', 'Other'];
 
 const ExplorePage = ({ isSidebarCollapsed, onToggleSidebar }) => {
   const [selectedCategory, setSelectedCategory] = useState('All');

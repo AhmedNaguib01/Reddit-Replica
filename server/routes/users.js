@@ -6,6 +6,7 @@ const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const Community = require('../models/Community');
 const Notification = require('../models/Notification');
+const { notifyFollow } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -145,6 +146,9 @@ router.post('/:username/follow', authenticateToken, async (req, res) => {
         followingActivity.followers.push(req.user.id);
       }
       following = true;
+
+      // Notify the user being followed
+      await notifyFollow(userToFollow._id, req.user);
     }
 
     await followerActivity.save();

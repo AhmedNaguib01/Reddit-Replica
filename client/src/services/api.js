@@ -148,3 +148,41 @@ export const notificationsAPI = {
     method: 'PUT',
   }),
 };
+
+// Custom Feeds API
+export const customFeedsAPI = {
+  getAll: () => apiRequest('/custom-feeds'),
+  
+  getByUsername: (username) => apiRequest(`/custom-feeds/user/${username}`),
+  
+  getById: (id) => apiRequest(`/custom-feeds/${id}`),
+  
+  getPosts: (id) => apiRequest(`/custom-feeds/${id}/posts`),
+  
+  create: (feedData) => apiRequest('/custom-feeds', {
+    method: 'POST',
+    body: JSON.stringify(feedData),
+  }),
+  
+  update: (id, feedData) => apiRequest(`/custom-feeds/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(feedData),
+  }),
+  
+  delete: (id) => apiRequest(`/custom-feeds/${id}`, {
+    method: 'DELETE',
+  }),
+  
+  toggleFavorite: (id) => apiRequest(`/custom-feeds/${id}/favorite`, {
+    method: 'PUT',
+  }),
+  
+  addCommunity: (feedId, communityId) => apiRequest(`/custom-feeds/${feedId}/communities`, {
+    method: 'POST',
+    body: JSON.stringify({ communityId }),
+  }),
+  
+  removeCommunity: (feedId, communityId) => apiRequest(`/custom-feeds/${feedId}/communities/${communityId}`, {
+    method: 'DELETE',
+  }),
+};

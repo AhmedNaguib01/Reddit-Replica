@@ -5,8 +5,8 @@ import { useToast } from '../context/ToastContext';
 import Sidebar from '../components/layout/Sidebar';
 import { UserProfileSkeleton, PostListSkeleton } from '../components/common/LoadingSkeleton';
 import EditProfileModal from '../components/user/EditProfileModal';
-import { postsAPI, usersAPI, commentsAPI } from '../services/api';
-import { MessageSquare, Cake, Award, Bookmark, Settings } from 'lucide-react';
+import { postsAPI, usersAPI, commentsAPI, customFeedsAPI } from '../services/api';
+import { MessageSquare, Cake, Award, Bookmark, Settings, LayoutGrid } from 'lucide-react';
 import '../styles/UserProfilePage.css';
 
 const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
@@ -19,6 +19,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
   const [followers, setFollowers] = useState([]);
   const [followingList, setFollowingList] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
+  const [customFeeds, setCustomFeeds] = useState([]);
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -65,6 +66,14 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
             console.error('Error fetching saved posts:', err);
           }
         }
+
+        // Fetch custom feeds for this user's profile
+        try {
+          const feeds = await customFeedsAPI.getByUsername(username);
+          setCustomFeeds(feeds);
+        } catch (err) {
+          console.error('Error fetching custom feeds:', err);
+        }
       } catch (error) {
         console.error('Error fetching user data:', error);
       } finally {
@@ -81,28 +90,37 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
       return;
     }
 
+    // Optimistic update - update UI immediately
+    const wasFollowing = following;
+    const newFollowing = !wasFollowing;
+    setFollowing(newFollowing);
+    setUser(prev => ({
+      ...prev,
+      followerCount: newFollowing 
+        ? (prev.followerCount || 0) + 1 
+        : Math.max((prev.followerCount || 0) - 1, 0)
+    }));
+
     try {
-      const result = await usersAPI.follow(username);
-      setFollowing(result.following);
-      // Update follower count
-      setUser(prev => ({
-        ...prev,
-        followerCount: result.following 
-          ? (prev.followerCount || 0) + 1 
-          : Math.max((prev.followerCount || 0) - 1, 0)
-      }));
-      // Refresh followers list
-      const followersData = await usersAPI.getFollowers(username);
-      setFollowers(followersData);
+      await usersAPI.follow(username);
+      // Refresh followers list in background (don't update following state again)
+      usersAPI.getFollowers(username).then(setFollowers).catch(() => {});
       // Show toast
       showToast(
-        result.following ? `You're now following u/${username}! 🎉` : `Unfollowed u/${username}`,
+        newFollowing ? `You're now following u/${username}! 🎉` : `Unfollowed u/${username}`,
         'success'
       );
     } catch (error) {
+      // Revert on error
+      setFollowing(wasFollowing);
+      setUser(prev => ({
+        ...prev,
+        followerCount: wasFollowing 
+          ? (prev.followerCount || 0) + 1 
+          : Math.max((prev.followerCount || 0) - 1, 0)
+      }));
       console.error('Error following user:', error);
       showToast(`Failed to follow: ${error.message}`, 'error');
-      alert(`Failed to follow: ${error.message}`);
     }
   };
 
@@ -227,6 +245,14 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
                 onClick={() => setActiveTab('saved')}
               >
                 Saved ({savedPosts.length})
+              </button>
+            )}
+            {customFeeds.length > 0 && (
+              <button 
+                className={`profile-tab ${activeTab === 'feeds' ? 'active' : ''}`}
+                onClick={() => setActiveTab('feeds')}
+              >
+                Custom Feeds ({customFeeds.length})
               </button>
             )}
           </div>
@@ -389,6 +415,29 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
                     <Bookmark size={48} className="empty-icon" />
                     <p>You haven't saved any posts yet</p>
                     <span className="empty-hint">Posts you save will appear here</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Custom Feeds Tab */}
+            {activeTab === 'feeds' && (
+              <div className="profile-feeds-list">
+                {customFeeds.map(feed => (
+                  <Link to={`/feed/${feed._id}`} key={feed._id} className="feed-list-card">
+                    <div className="feed-list-icon">
+                      <LayoutGrid size={24} />
+                    </div>
+                    <div className="feed-list-info">
+                      <span className="feed-list-name">{feed.name}</span>
+                      <span className="feed-list-meta">{feed.communityCount || feed.communities?.length || 0} communities</span>
+                    </div>
+                  </Link>
+                ))}
+                {customFeeds.length === 0 && (
+                  <div className="empty-state-large">
+                    <LayoutGrid size={48} className="empty-icon" />
+                    <p>No custom feeds to show</p>
                   </div>
                 )}
               </div>

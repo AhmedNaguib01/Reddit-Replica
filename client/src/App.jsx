@@ -16,12 +16,14 @@ import CareersPage from './pages/CareersPage';
 import RulesPage from './pages/RulesPage';
 import PrivacyPage from './pages/PrivacyPage';
 import SavedPostsPage from './pages/SavedPostsPage';
+import CustomFeedPage from './pages/CustomFeedPage';
 import Header from './components/layout/Header';
 import LoadingBar from './components/layout/LoadingBar';
 import LoginModal from './components/auth/LoginModal';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { LoadingProvider } from './context/LoadingContext';
+import { SidebarProvider } from './context/SidebarContext';
 import './styles/global.css';
 
 function App() {
@@ -64,9 +66,10 @@ function App() {
 
   return (
     <AuthProvider>
-      <ToastProvider>
-        <LoadingProvider>
-          <Router>
+      <SidebarProvider>
+        <ToastProvider>
+          <LoadingProvider>
+            <Router>
             <div className="app">
             <Header 
               onLoginClick={openLogin} 
@@ -89,6 +92,7 @@ function App() {
             <Route path="/rules" element={<RulesPage isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
             <Route path="/privacy" element={<PrivacyPage isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
             <Route path="/saved" element={<SavedPostsPage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
+            <Route path="/feed/:feedId" element={<CustomFeedPage isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
             <Route path="/r/:subreddit" element={<CommunityPage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
             <Route path="/user/:username" element={<UserProfilePage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
             <Route path="/u/:username" element={<UserProfilePage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
@@ -97,9 +101,10 @@ function App() {
 
             <LoginModal isOpen={isLoginOpen} onClose={closeLogin} />
             </div>
-          </Router>
-        </LoadingProvider>
-      </ToastProvider>
+            </Router>
+          </LoadingProvider>
+        </ToastProvider>
+      </SidebarProvider>
     </AuthProvider>
   );
 }

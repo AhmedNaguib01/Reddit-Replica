@@ -1,0 +1,187 @@
+.custom-feed-page {
+  background: var(--color-bg-page);
+  min-height: calc(100vh - 56px);
+}
+
+.custom-feed-layout {
+  display: flex;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  min-height: calc(100vh - 56px);
+}
+
+.custom-feed-content {
+  flex: 1;
+  padding: 20px 24px;
+}
+
+.feed-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.feed-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+}
+
+.feed-info {
+  flex: 1;
+}
+
+.feed-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.feed-creator {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.feed-description {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.feed-communities {
+  margin-bottom: 24px;
+}
+
+.feed-communities h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.communities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.feed-community-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.feed-community-chip:hover {
+  border-color: var(--color-blue);
+  background: var(--color-bg-secondary);
+}
+
+.feed-community-chip img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.add-community-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.add-community-chip:hover {
+  border-color: var(--color-blue);
+  color: var(--color-blue);
+}
+
+.feed-empty-state {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.feed-empty-state h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.feed-empty-state p {
+  color: var(--color-text-secondary);
+  margin-bottom: 24px;
+}
+
+.btn-add-communities {
+  padding: 12px 24px;
+  background: var(--color-blue);
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-add-communities:hover {
+  background: var(--color-blue-hover);
+}
+
+.feed-posts {
+  margin-top: 24px;
+}
+
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--color-text-secondary);
+}
+
+
+.btn-edit-feed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-edit-feed:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-secondary);
+}

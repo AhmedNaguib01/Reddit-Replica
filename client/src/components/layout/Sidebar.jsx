@@ -1,45 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Home, TrendingUp, Compass, ChevronRight, ChevronLeft, 
-  Clock, Plus, Settings, HelpCircle, Briefcase, FileText, Users, ChevronDown
+  Clock, Plus, Settings, HelpCircle, Briefcase, FileText, Users, ChevronDown, ChevronUp, LayoutGrid, Star
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { communitiesAPI } from '../../services/api';
+import { useSidebar } from '../../context/SidebarContext';
 import CreateCommunityModal from '../community/CreateCommunityModal';
+import CreateCustomFeedModal from '../feed/CreateCustomFeedModal';
 import '../../styles/Sidebar.css';
 
 const Sidebar = ({ isCollapsed, onToggle }) => {
   const { currentUser } = useAuth();
-  const [recentCommunities, setRecentCommunities] = useState([]);
-  const [joinedCommunities, setJoinedCommunities] = useState([]);
+  const { 
+    recentCommunities, 
+    joinedCommunities, 
+    customFeeds, 
+    addCustomFeed, 
+    addJoinedCommunity,
+    toggleFeedFavorite 
+  } = useSidebar();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  useEffect(() => {
-    const fetchCommunities = async () => {
-      if (!currentUser) {
-        setRecentCommunities([]);
-        setJoinedCommunities([]);
-        return;
-      }
-
-      try {
-        const [recent, joined] = await Promise.all([
-          communitiesAPI.getRecent().catch(() => []),
-          communitiesAPI.getJoined().catch(() => [])
-        ]);
-        setRecentCommunities(recent);
-        setJoinedCommunities(joined);
-      } catch (error) {
-        console.error('Error fetching communities:', error);
-      }
-    };
-
-    fetchCommunities();
-  }, [currentUser]);
+  const [isCreateFeedModalOpen, setIsCreateFeedModalOpen] = useState(false);
+  const [isFeedsExpanded, setIsFeedsExpanded] = useState(true);
 
   const handleCommunityCreated = (newCommunity) => {
-    setJoinedCommunities(prev => [newCommunity, ...prev]);
+    addJoinedCommunity(newCommunity);
+  };
+
+  const handleFeedCreated = (newFeed) => {
+    addCustomFeed(newFeed);
+  };
+
+  const handleToggleFavorite = async (e, feedId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFeedFavorite(feedId);
   };
 
   return (
@@ -107,22 +103,81 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
           </>
         )}
 
-        {/* Communities Section */}
-        {!isCollapsed && (
+        {/* Communities Section - Only show if user is logged in */}
+        {!isCollapsed && currentUser && (
           <>
             <div className="sidebar-section">
               <h3 className="sidebar-title">COMMUNITIES</h3>
               
               {/* Manage Communities - Only for logged in users */}
-              {currentUser && (
-                <Link to="/manage-communities" className="sidebar-link">
-                  <Settings size={18} className="sidebar-icon" />
-                  <span className="sidebar-text">Manage Communities</span>
-                  {joinedCommunities.length > 0 && (
-                    <span className="sidebar-badge">{joinedCommunities.length}</span>
-                  )}
-                </Link>
+              <Link to="/manage-communities" className="sidebar-link">
+                <Settings size={18} className="sidebar-icon" />
+                <span className="sidebar-text">Manage Communities</span>
+                {joinedCommunities.length > 0 && (
+                  <span className="sidebar-badge">{joinedCommunities.length}</span>
+                )}
+              </Link>
+            </div>
+            <hr className="sidebar-divider" />
+          </>
+        )}
+
+        {/* Custom Feeds Section - Only show if user is logged in */}
+        {!isCollapsed && currentUser && (
+          <>
+            <div className="sidebar-section">
+              <button 
+                className="sidebar-section-header"
+                onClick={() => setIsFeedsExpanded(!isFeedsExpanded)}
+              >
+                <h3 className="sidebar-title">CUSTOM FEEDS</h3>
+                {isFeedsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              
+              {isFeedsExpanded && (
+                <>
+                  <button 
+                    className="sidebar-link sidebar-btn"
+                    onClick={() => setIsCreateFeedModalOpen(true)}
+                  >
+                    <Plus size={18} className="sidebar-icon" />
+                    <span className="sidebar-text">Create Custom Feed</span>
+                  </button>
+                  
+                  {customFeeds.map((feed) => (
+                    <Link 
+                      to={`/feed/${feed._id}`} 
+                      key={feed._id} 
+                      className="sidebar-link feed-link"
+                    >
+                      <div className="feed-icon-small">
+                        <LayoutGrid size={14} />
+                      </div>
+                      <span className="sidebar-text">{feed.name}</span>
+                      <button 
+                        className={`favorite-btn ${feed.isFavorite ? 'active' : ''}`}
+                        onClick={(e) => handleToggleFavorite(e, feed._id)}
+                      >
+                        <Star size={14} fill={feed.isFavorite ? 'currentColor' : 'none'} />
+                      </button>
+                    </Link>
+                  ))}
+                </>
               )}
+            </div>
+            <hr className="sidebar-divider" />
+          </>
+        )}
+
+        {/* All Communities Link */}
+        {!isCollapsed && (
+          <>
+            <div className="sidebar-section">
+              <Link to="/communities" className="sidebar-link communities-expand-btn">
+                <Users size={18} className="sidebar-icon" />
+                <span className="sidebar-text">Communities</span>
+                <ChevronDown size={16} className="expand-icon" />
+              </Link>
             </div>
             <hr className="sidebar-divider" />
           </>
@@ -154,20 +209,6 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
           </>
         )}
 
-        {/* All Communities Link */}
-        {!isCollapsed && (
-          <>
-            <div className="sidebar-section">
-              <Link to="/communities" className="sidebar-link communities-expand-btn">
-                <Users size={18} className="sidebar-icon" />
-                <span className="sidebar-text">Communities</span>
-                <ChevronDown size={16} className="expand-icon" />
-              </Link>
-            </div>
-            <hr className="sidebar-divider" />
-          </>
-        )}
-
         {/* Footer */}
         {!isCollapsed && (
           <div className="sidebar-footer">
@@ -185,6 +226,13 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCommunityCreated={handleCommunityCreated}
+      />
+
+      {/* Create Custom Feed Modal */}
+      <CreateCustomFeedModal
+        isOpen={isCreateFeedModalOpen}
+        onClose={() => setIsCreateFeedModalOpen(false)}
+        onFeedCreated={handleFeedCreated}
       />
     </aside>
   );

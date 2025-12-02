@@ -122,7 +122,7 @@ router.post(
         });
       }
 
-      const { name, title, description, iconUrl, bannerUrl } = req.body;
+      const { name, title, description, iconUrl, bannerUrl, category } = req.body;
 
       // Check if community exists
       const existing = await Community.findOne({ name: name.toLowerCase() });
@@ -135,6 +135,7 @@ router.post(
         displayName: `r/${name}`,
         title: title || name,
         description: description || '',
+        category: category || 'Other',
         iconUrl,
         bannerUrl,
         creator: req.user.id,

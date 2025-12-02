@@ -5,6 +5,7 @@ const Post = require('../models/Post');
 const Community = require('../models/Community');
 const Vote = require('../models/Vote');
 const UserActivity = require('../models/UserActivity');
+const { notifyPostUpvote } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -244,8 +245,13 @@ router.post('/:id/vote', authenticateToken, async (req, res) => {
         targetType: 'post',
         voteType: voteValue
       });
-      if (voteValue === 1) post.upvotes++;
-      else post.downvotes++;
+      if (voteValue === 1) {
+        post.upvotes++;
+        // Notify post author of upvote (only for new upvotes, not downvotes)
+        await notifyPostUpvote(post, req.user);
+      } else {
+        post.downvotes++;
+      }
       userVote = vote;
     }
 

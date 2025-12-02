@@ -144,7 +144,15 @@
 }
 
 .action-pill:hover {
-  background-color: #e2e7e9;
+  background-color: #4a4a4b;
+}
+
+:root .action-pill:hover {
+  background-color: #d0d5d8;
+}
+
+.dark-mode .action-pill:hover {
+  background-color: #4a4a4b;
 }
 
 .icon-btn {

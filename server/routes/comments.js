@@ -4,6 +4,7 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const Vote = require('../models/Vote');
+const { notifyPostComment, notifyCommentReply } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -156,6 +157,18 @@ router.post(
       // Increment post comment count
       post.commentCount++;
       await post.save();
+
+      // Create notifications
+      if (parentId) {
+        // This is a reply to another comment
+        const parentComment = await Comment.findById(parentId);
+        if (parentComment) {
+          await notifyCommentReply(parentComment, post, req.user);
+        }
+      } else {
+        // This is a top-level comment on the post
+        await notifyPostComment(post, req.user);
+      }
 
       res.status(201).json(newComment);
     } catch (error) {

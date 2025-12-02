@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }) => {
   const login = (userData, token) => {
     setCurrentUser(userData);
     localStorage.setItem('authToken', token);
+    window.location.reload();
   };
 
   // Logout
@@ -51,6 +52,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setCurrentUser(null);
       localStorage.removeItem('authToken');
+      window.location.reload();
     }
   };
 

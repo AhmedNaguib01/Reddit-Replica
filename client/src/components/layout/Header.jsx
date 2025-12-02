@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Moon, Sun, Search, X, Plus, LogOut, User } from 'lucide-react';
+import { Moon, Sun, Search, X, Plus, LogOut, User, MoreHorizontal, Smartphone, MousePointerClick, Clock, QrCode } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { communitiesAPI } from '../../services/api';
@@ -150,6 +150,69 @@ const SearchBar = () => {
   );
 };
 
+const GuestMenu = ({ onLoginClick }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <>
+      <button className="btn btn-get-app">
+        <QrCode size={18} />
+        Get App
+      </button>
+      
+      <button className="btn btn-primary" onClick={onLoginClick}>
+        Log In
+      </button>
+
+      <div className="guest-menu-container" ref={menuRef}>
+        <button 
+          className="btn btn-icon btn-more"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          aria-label="More options"
+        >
+          <MoreHorizontal size={20} />
+        </button>
+
+        {isMenuOpen && (
+          <div className="guest-menu-dropdown">
+            <button 
+              className="guest-menu-item"
+              onClick={() => {
+                onLoginClick();
+                setIsMenuOpen(false);
+              }}
+            >
+              <Smartphone size={20} />
+              <span>Log In / Sign Up</span>
+            </button>
+            <Link to="/advertise" className="guest-menu-item" onClick={() => setIsMenuOpen(false)}>
+              <MousePointerClick size={20} />
+              <span>Advertise on Reddit</span>
+            </Link>
+            <Link to="/premium" className="guest-menu-item" onClick={() => setIsMenuOpen(false)}>
+              <Clock size={20} />
+              <span>Try Reddit Pro</span>
+              <span className="beta-badge">BETA</span>
+            </Link>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
 const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const { currentUser, logout } = useAuth();
@@ -209,9 +272,7 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
             </button>
           </>
         ) : (
-          <button className="btn btn-primary" onClick={onLoginClick}>
-            Log In
-          </button>
+          <GuestMenu onLoginClick={onLoginClick} />
         )}
       </div>
 
