@@ -131,11 +131,6 @@ export const usersAPI = {
   isFollowing: (username) => apiRequest(`/users/${username}/is-following`),
 };
 
-// User Activity API
-export const userActivityAPI = {
-  getJoinedCommunities: () => apiRequest('/communities/user/joined'),
-};
-
 // Notifications API
 export const notificationsAPI = {
   getAll: () => apiRequest('/notifications'),
