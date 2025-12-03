@@ -78,13 +78,7 @@ const LoginModal = ({ isOpen, onClose }) => {
 
         <div className="auth-buttons">
           <button className="btn-auth">
-            <Smartphone size={20} /> Continue With Phone Number
-          </button>
-          <button className="btn-auth">
             <Globe size={20} /> Continue With Google 
-          </button>
-          <button className="btn-auth">
-            <Apple size={20} /> Continue With Apple
           </button>
         </div>
 
