@@ -3,55 +3,40 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Users, ArrowLeft, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useSidebar } from '../context/SidebarContext';
 import Sidebar from '../components/layout/Sidebar';
 import { communitiesAPI } from '../services/api';
 import '../styles/ManageCommunitiesPage.css';
 import '../styles/CommunityPage.css';
 
 const ManageCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
-  const [communities, setCommunities] = useState([]);
   const [filteredCommunities, setFilteredCommunities] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [leavingId, setLeavingId] = useState(null);
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const { joinedCommunities, removeJoinedCommunity, loading } = useSidebar();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!currentUser) {
       onAuthAction();
-      return;
     }
-
-    const fetchCommunities = async () => {
-      try {
-        setLoading(true);
-        const joined = await communitiesAPI.getJoined();
-        setCommunities(joined);
-        setFilteredCommunities(joined);
-      } catch (error) {
-        console.error('Error fetching communities:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCommunities();
   }, [currentUser, onAuthAction]);
 
+  // Filter communities based on search
   useEffect(() => {
     if (searchQuery.trim()) {
-      const filtered = communities.filter(c => 
+      const filtered = joinedCommunities.filter(c => 
         c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredCommunities(filtered);
     } else {
-      setFilteredCommunities(communities);
+      setFilteredCommunities(joinedCommunities);
     }
-  }, [searchQuery, communities]);
+  }, [searchQuery, joinedCommunities]);
 
   const handleLeaveCommunity = async (e, communityId, communityName) => {
     e.preventDefault();
@@ -60,8 +45,8 @@ const ManageCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSideb
     try {
       setLeavingId(communityId);
       await communitiesAPI.join(communityId);
-      setCommunities(prev => prev.filter(c => c.id !== communityId));
-      setFilteredCommunities(prev => prev.filter(c => c.id !== communityId));
+      // Update sidebar immediately
+      removeJoinedCommunity(communityId);
       showToast(`Left ${communityName}`, 'success');
     } catch (error) {
       console.error('Error leaving community:', error);
@@ -98,7 +83,7 @@ const ManageCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSideb
           <div className="manage-communities-header">
             <Users size={28} />
             <h1>Manage Communities</h1>
-            <span className="total-count">{communities.length} communities</span>
+            <span className="total-count">{joinedCommunities.length} communities</span>
           </div>
 
           <div className="search-box">
@@ -113,7 +98,7 @@ const ManageCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSideb
 
           {loading ? (
             <div className="loading-state">Loading your communities...</div>
-          ) : communities.length === 0 ? (
+          ) : joinedCommunities.length === 0 ? (
             <div className="empty-state">
               <Users size={64} />
               <h2>No communities yet</h2>

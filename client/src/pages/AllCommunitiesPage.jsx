@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Users, ArrowLeft, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useSidebar } from '../context/SidebarContext';
 import Sidebar from '../components/layout/Sidebar';
 import { communitiesAPI } from '../services/api';
 import '../styles/AllCommunitiesPage.css';
@@ -17,26 +18,16 @@ const AllCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar 
   const [joinedIds, setJoinedIds] = useState(new Set());
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const { addJoinedCommunity, removeJoinedCommunity, joinedCommunities } = useSidebar();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch all communities and joined communities in parallel
-        const fetchPromises = [communitiesAPI.getAll()];
-        if (currentUser) {
-          fetchPromises.push(communitiesAPI.getJoinedCached().catch(() => []));
-        }
-        
-        const [allCommunities, joined] = await Promise.all(fetchPromises);
+        const allCommunities = await communitiesAPI.getAll();
         setCommunities(allCommunities);
         setFilteredCommunities(allCommunities);
-
-        if (currentUser && joined) {
-          setJoinedIds(new Set(joined.map(c => c.name)));
-        }
       } catch (error) {
         console.error('Error fetching communities:', error);
       } finally {
@@ -45,7 +36,14 @@ const AllCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar 
     };
 
     fetchData();
-  }, [currentUser]);
+  }, []);
+
+  // Sync joined status from sidebar context
+  useEffect(() => {
+    if (currentUser && joinedCommunities.length > 0) {
+      setJoinedIds(new Set(joinedCommunities.map(c => c.name)));
+    }
+  }, [currentUser, joinedCommunities]);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -72,13 +70,14 @@ const AllCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar 
     try {
       setJoiningId(communityName);
       const result = await communitiesAPI.join(communityName);
-      // Clear cache so sidebar updates
-      communitiesAPI.clearJoinedCache();
       
-      if (result.joined) {
+      // Update sidebar immediately
+      if (result.joined && result.community) {
+        addJoinedCommunity(result.community);
         setJoinedIds(prev => new Set([...prev, communityName]));
         showToast(`Joined r/${communityName}`, 'success');
       } else {
+        removeJoinedCommunity(communityName);
         setJoinedIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(communityName);

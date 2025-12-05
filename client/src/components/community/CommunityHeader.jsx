@@ -20,9 +20,8 @@ const CommunityHeader = ({
 }) => {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const { refreshSidebarData } = useSidebar();
+  const { addJoinedCommunity, removeJoinedCommunity, joinedCommunities } = useSidebar();
   const navigate = useNavigate();
-  const [joined, setJoined] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,26 +32,10 @@ const CommunityHeader = ({
      currentUser.id === communityData.creatorId ||
      currentUser._id === communityData.creator);
 
-  // Check if user has joined this community - use cached version to avoid extra API calls
-  useEffect(() => {
-    const checkJoinStatus = async () => {
-      if (!currentUser) {
-        setJoined(false);
-        return;
-      }
-      try {
-        // Use cached version to avoid unnecessary API calls
-        const joinedCommunities = await communitiesAPI.getJoinedCached();
-        const isJoined = joinedCommunities.some(c => 
-          c.name === communityId || c.name === name
-        );
-        setJoined(isJoined);
-      } catch (error) {
-        console.error('Error checking join status:', error);
-      }
-    };
-    checkJoinStatus();
-  }, [currentUser, communityId, name]);
+  // Derive joined status directly from context (no local state to avoid flickering)
+  const joined = currentUser && joinedCommunities.some(c => 
+    c.name === communityId || c.name === name
+  );
 
   const handleJoinClick = async () => {
     if (!currentUser && onAuthRequired) {
@@ -63,21 +46,17 @@ const CommunityHeader = ({
     try {
       setLoading(true);
       const result = await communitiesAPI.join(communityId);
-      setJoined(result.joined);
+      
       showToast(
         result.joined ? `Joined r/${name}` : `Left r/${name}`,
         'success'
       );
-      // Refresh sidebar to show updated communities
-      refreshSidebarData();
-      // Update community data if callback provided
-      if (onCommunityUpdated && result.community) {
-        onCommunityUpdated(result.community);
-      }
+      
+      // Simple refresh after join/leave
+      window.location.reload();
     } catch (error) {
       console.error('Join error:', error);
       showToast(`Failed to join: ${error.message}`, 'error');
-    } finally {
       setLoading(false);
     }
   };

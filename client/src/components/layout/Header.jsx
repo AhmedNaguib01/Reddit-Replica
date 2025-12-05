@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Moon, Sun, Search, X, Plus, LogOut, User, MoreHorizontal, Smartphone, MessageCircle } from 'lucide-react';
+import { Moon, Search, X, Plus, LogOut, User, MoreHorizontal, Smartphone, MessageCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
@@ -231,7 +231,7 @@ const SearchBar = () => {
   );
 };
 
-const GuestMenu = ({ onLoginClick }) => {
+const GuestMenu = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -268,6 +268,26 @@ const GuestMenu = ({ onLoginClick }) => {
             <Smartphone size={20} />
             <span>Log In / Sign Up</span>
           </button>
+
+          <div className="guest-menu-divider"></div>
+
+          {/* Dark Mode Toggle */}
+          <div className="guest-menu-item guest-menu-toggle">
+            <div className="guest-menu-toggle-left">
+              <Moon size={20} />
+              <span>Dark Mode</span>
+            </div>
+            <button 
+              className={`toggle-switch ${isDarkMode ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleDarkMode();
+              }}
+              aria-label={isDarkMode ? "Disable dark mode" : "Enable dark mode"}
+            >
+              <span className="toggle-slider"></span>
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -396,18 +416,6 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
 
       {/* Right: Actions */}
       <div className="header-right">
-        {/* Dark/Light mode toggle - only show for guests */}
-        {!currentUser && (
-          <button 
-            className="btn btn-icon" 
-            onClick={onToggleDarkMode}
-            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-            title={isDarkMode ? "Light mode" : "Dark mode"}
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-        )}
-
         {/* Desktop: Get App button - only show for guests */}
         {!currentUser && (
           <button className="btn btn-get-app desktop-only" aria-label="Get App">
@@ -457,7 +465,11 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
               Log In
             </button>
             {/* Both: Three dots menu */}
-            <GuestMenu onLoginClick={onLoginClick} />
+            <GuestMenu 
+              onLoginClick={onLoginClick} 
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={onToggleDarkMode}
+            />
           </>
         )}
       </div>

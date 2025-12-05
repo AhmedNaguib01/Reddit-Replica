@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Flame, Sparkles, TrendingUp, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useSidebar } from '../context/SidebarContext';
 import Sidebar from '../components/layout/Sidebar';
 import RightSidebar from '../components/layout/RightSidebar';
 import PostList from '../components/post/PostList';
@@ -25,10 +26,11 @@ const CommunityPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =>
   const [refreshKey, setRefreshKey] = useState(0);
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const { joinedCommunities, addJoinedCommunity, addRecentCommunity } = useSidebar();
   
   usePageTitle(communityData ? `r/${communityData.name}` : `r/${subreddit}`);
 
-  // Fetch community data when subreddit changes (not when user changes)
+  // Fetch community data when subreddit changes
   useEffect(() => {
     const fetchCommunity = async () => {
       try {
@@ -45,23 +47,29 @@ const CommunityPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =>
     fetchCommunity();
   }, [subreddit]);
 
-  // Check join status separately (doesn't block page load)
+  // Add to recent communities when data is loaded (separate effect to avoid re-fetching)
   useEffect(() => {
-    const checkJoinStatus = async () => {
-      if (!currentUser) {
-        setHasJoined(false);
-        return;
-      }
-      try {
-        const joinedCommunities = await communitiesAPI.getJoinedCached();
-        const isJoined = joinedCommunities.some(c => c.name === subreddit);
-        setHasJoined(isJoined);
-      } catch {
-        setHasJoined(false);
-      }
-    };
-    checkJoinStatus();
-  }, [subreddit, currentUser]);
+    if (currentUser && communityData) {
+      addRecentCommunity({
+        _id: communityData._id,
+        name: communityData.name,
+        displayName: communityData.displayName || communityData.title,
+        iconUrl: communityData.iconUrl,
+        bannerUrl: communityData.bannerUrl,
+        memberCount: communityData.memberCount
+      });
+    }
+  }, [communityData?._id, currentUser]); // Only run when community ID changes
+
+  // Check join status from sidebar context
+  useEffect(() => {
+    if (!currentUser) {
+      setHasJoined(false);
+      return;
+    }
+    const isJoined = joinedCommunities.some(c => c.name === subreddit);
+    setHasJoined(isJoined);
+  }, [subreddit, currentUser, joinedCommunities]);
 
   const handleCreatePostClick = () => {
     if (!currentUser) {
@@ -80,9 +88,11 @@ const CommunityPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =>
   const handleJoinAndPost = async () => {
     try {
       const result = await communitiesAPI.join(subreddit);
-      // Clear cache after joining so next fetch gets fresh data
-      communitiesAPI.clearJoinedCache();
       if (result.joined) {
+        // Update sidebar immediately
+        if (result.community) {
+          addJoinedCommunity(result.community);
+        }
         setHasJoined(true);
         setIsJoinPromptOpen(false);
         setIsCreatePostOpen(true);
@@ -132,7 +142,7 @@ const CommunityPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =>
             onAuthRequired={onAuthAction}
             communityId={subreddit}
             communityData={communityData}
-            onCommunityUpdated={() => window.location.reload()}
+            onCommunityUpdated={(updated) => setCommunityData(prev => ({ ...prev, ...updated }))}
           />
 
           <div className="page-main-area">

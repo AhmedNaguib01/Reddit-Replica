@@ -403,6 +403,28 @@
   color: var(--color-text-primary);
 }
 
+/* Guest Menu Dark Mode Toggle */
+.guest-menu-toggle {
+  justify-content: space-between;
+  cursor: default;
+}
+
+.guest-menu-toggle:hover {
+  background-color: transparent;
+}
+
+.guest-menu-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guest-menu-divider {
+  height: 1px;
+  background-color: var(--color-border-light);
+  margin: 4px 0;
+}
+
 .beta-badge {
   margin-left: auto;
   background: var(--color-primary);

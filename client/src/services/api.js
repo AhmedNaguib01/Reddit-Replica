@@ -124,17 +124,12 @@ export const commentsAPI = {
   }),
 };
 
-// Cache for joined communities
-let joinedCommunitiesCache = null;
-let joinedCacheTimestamp = 0;
-const JOINED_CACHE_DURATION = 30 * 1000; // 30 seconds
-
 // Cache for all communities (used by multiple components)
 let allCommunitiesCache = null;
 let allCommunitiesCacheTimestamp = 0;
 const ALL_COMMUNITIES_CACHE_DURATION = 30 * 1000; // 30 seconds
 
-// Communities API
+// Communities API - NO caching for user-specific data to ensure freshness
 export const communitiesAPI = {
   getAll: async () => {
     const now = Date.now();
@@ -163,42 +158,16 @@ export const communitiesAPI = {
     method: 'DELETE',
   }),
   
-  join: (communityId) => {
-    // Invalidate cache when joining/leaving
-    joinedCommunitiesCache = null;
-    return apiRequest(`/communities/${communityId}/join`, {
-      method: 'POST',
-    });
-  },
+  join: (communityId) => apiRequest(`/communities/${communityId}/join`, {
+    method: 'POST',
+  }),
   
   getRecent: () => apiRequest('/communities/user/recent'),
   
-  getJoined: () => {
-    // Invalidate cache and fetch fresh
-    joinedCommunitiesCache = null;
-    return apiRequest('/communities/user/joined').then(data => {
-      joinedCommunitiesCache = data;
-      joinedCacheTimestamp = Date.now();
-      return data;
-    });
-  },
+  getJoined: () => apiRequest('/communities/user/joined'),
   
-  // Cached version for checking join status without making API calls
-  getJoinedCached: async () => {
-    const now = Date.now();
-    if (joinedCommunitiesCache && (now - joinedCacheTimestamp) < JOINED_CACHE_DURATION) {
-      return joinedCommunitiesCache;
-    }
-    const data = await apiRequest('/communities/user/joined');
-    joinedCommunitiesCache = data;
-    joinedCacheTimestamp = now;
-    return data;
-  },
-  
-  // Clear cache (call after join/leave)
-  clearJoinedCache: () => {
-    joinedCommunitiesCache = null;
-  },
+  // Alias for backward compatibility
+  getJoinedCached: () => apiRequest('/communities/user/joined'),
 };
 
 // Users API
@@ -233,27 +202,9 @@ export const notificationsAPI = {
   }),
 };
 
-// Cache for custom feeds
-let customFeedsCache = null;
-let customFeedsCacheTimestamp = 0;
-const CUSTOM_FEEDS_CACHE_DURATION = 30 * 1000; // 30 seconds
-
-// Custom Feeds API
+// Custom Feeds API - NO caching to ensure freshness
 export const customFeedsAPI = {
-  getAll: async () => {
-    const now = Date.now();
-    if (customFeedsCache && (now - customFeedsCacheTimestamp) < CUSTOM_FEEDS_CACHE_DURATION) {
-      return customFeedsCache;
-    }
-    const data = await apiRequest('/custom-feeds');
-    customFeedsCache = data;
-    customFeedsCacheTimestamp = now;
-    return data;
-  },
-  
-  clearCache: () => {
-    customFeedsCache = null;
-  },
+  getAll: () => apiRequest('/custom-feeds'),
   
   getByUsername: (username) => apiRequest(`/custom-feeds/user/${username}`),
   
@@ -261,25 +212,19 @@ export const customFeedsAPI = {
   
   getPosts: (id) => apiRequest(`/custom-feeds/${id}/posts`),
   
-  create: (feedData) => {
-    customFeedsCache = null; // Invalidate cache
-    return apiRequest('/custom-feeds', {
-      method: 'POST',
-      body: JSON.stringify(feedData),
-    });
-  },
+  create: (feedData) => apiRequest('/custom-feeds', {
+    method: 'POST',
+    body: JSON.stringify(feedData),
+  }),
   
   update: (id, feedData) => apiRequest(`/custom-feeds/${id}`, {
     method: 'PUT',
     body: JSON.stringify(feedData),
   }),
   
-  delete: (id) => {
-    customFeedsCache = null; // Invalidate cache
-    return apiRequest(`/custom-feeds/${id}`, {
-      method: 'DELETE',
-    });
-  },
+  delete: (id) => apiRequest(`/custom-feeds/${id}`, {
+    method: 'DELETE',
+  }),
   
   toggleFavorite: (id) => apiRequest(`/custom-feeds/${id}/favorite`, {
     method: 'PUT',

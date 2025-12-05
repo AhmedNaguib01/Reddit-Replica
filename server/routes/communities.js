@@ -44,18 +44,45 @@ const trackCommunityVisit = (req, communityId) => {
         },
         { upsert: true }
       );
+      
+      // Invalidate user's recent cache so next fetch gets fresh data
+      userDataCache.delete(`${decoded.id}:recent`);
     } catch (err) {
       // Ignore auth errors
     }
   });
 };
 
+// Per-user cache for recent/joined communities (short duration for responsiveness)
+const userDataCache = new Map();
+const USER_CACHE_DURATION = 5 * 1000; // 5 seconds - short for quick updates
+
+const getUserCache = (userId, type) => {
+  const key = `${userId}:${type}`;
+  const cached = userDataCache.get(key);
+  if (cached && (Date.now() - cached.timestamp) < USER_CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setUserCache = (userId, type, data) => {
+  const key = `${userId}:${type}`;
+  userDataCache.set(key, { data, timestamp: Date.now() });
+};
+
 // GET /api/communities/user/recent - Get recent communities (protected)
 router.get('/user/recent', authenticateToken, async (req, res) => {
   try {
+    // Check cache first
+    const cached = getUserCache(req.user.id, 'recent');
+    if (cached) {
+      return res.status(200).json(cached);
+    }
+
     const activity = await UserActivity.findOne({ user: req.user.id })
       .select('recentCommunities')
-      .populate({ path: 'recentCommunities', options: { lean: true } })
+      .populate({ path: 'recentCommunities', select: 'name displayName iconUrl bannerUrl memberCount', options: { lean: true } })
       .lean();
     
     if (!activity || !activity.recentCommunities || !activity.recentCommunities.length) {
@@ -65,10 +92,11 @@ router.get('/user/recent', authenticateToken, async (req, res) => {
     // Format communities with id field
     const formattedCommunities = activity.recentCommunities.map(c => ({
       ...c,
-      id: c.name, // Use name as id for routing
+      id: c.name,
       displayName: c.displayName || `r/${c.name}`
     }));
 
+    setUserCache(req.user.id, 'recent', formattedCommunities);
     res.status(200).json(formattedCommunities);
   } catch (error) {
     console.error('Get recent communities error:', error);
@@ -79,9 +107,15 @@ router.get('/user/recent', authenticateToken, async (req, res) => {
 // GET /api/communities/user/joined - Get joined communities (protected)
 router.get('/user/joined', authenticateToken, async (req, res) => {
   try {
+    // Check cache first
+    const cached = getUserCache(req.user.id, 'joined');
+    if (cached) {
+      return res.status(200).json(cached);
+    }
+
     const activity = await UserActivity.findOne({ user: req.user.id })
       .select('joinedCommunities')
-      .populate({ path: 'joinedCommunities', options: { lean: true } })
+      .populate({ path: 'joinedCommunities', select: 'name displayName iconUrl bannerUrl memberCount description creator creatorUsername', options: { lean: true } })
       .lean();
     
     if (!activity || !activity.joinedCommunities || !activity.joinedCommunities.length) {
@@ -91,10 +125,11 @@ router.get('/user/joined', authenticateToken, async (req, res) => {
     // Format communities with id field
     const formattedCommunities = activity.joinedCommunities.map(c => ({
       ...c,
-      id: c.name, // Use name as id for routing
+      id: c.name,
       displayName: c.displayName || `r/${c.name}`
     }));
 
+    setUserCache(req.user.id, 'joined', formattedCommunities);
     res.status(200).json(formattedCommunities);
   } catch (error) {
     console.error('Get joined communities error:', error);
@@ -293,6 +328,10 @@ router.post('/:id/join', authenticateToken, async (req, res) => {
 
     await activity.save();
     await community.save();
+
+    // Invalidate user cache for joined communities
+    userDataCache.delete(`${req.user.id}:joined`);
+    userDataCache.delete(`${req.user.id}:recent`);
 
     res.status(200).json({
       joined,

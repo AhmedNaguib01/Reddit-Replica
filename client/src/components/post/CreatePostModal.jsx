@@ -3,6 +3,7 @@ import { X, FileText, Image, Link, Upload } from 'lucide-react';
 import { postsAPI, communitiesAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useSidebar } from '../../context/SidebarContext';
 import JoinPromptModal from '../community/JoinPromptModal';
 import '../../styles/CreatePostModal.css';
 
@@ -11,30 +12,24 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedCommunity, setSelectedCommunity] = useState(subreddit || '');
-  const [communities, setCommunities] = useState([]);
-  const [joinedCommunities, setJoinedCommunities] = useState([]);
   const [imageMode, setImageMode] = useState('url'); // 'url' or 'upload'
   const [loading, setLoading] = useState(false);
   const [showJoinPrompt, setShowJoinPrompt] = useState(false);
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const { joinedCommunities: sidebarJoined, addJoinedCommunity } = useSidebar();
 
-  // Fetch only joined communities when modal opens
+  // Use joined communities from sidebar context
+  const communities = sidebarJoined;
+  const joinedCommunityNames = sidebarJoined.map(c => c.name);
+
+  // No need to fetch - we use sidebar context
   useEffect(() => {
     if (isOpen && currentUser) {
-      const fetchData = async () => {
-        try {
-          const joined = await communitiesAPI.getJoined();
-          setCommunities(joined || []);
-          setJoinedCommunities((joined || []).map(c => c.name));
-        } catch (error) {
-          console.error('Error fetching communities:', error);
-          showToast('Failed to load communities', 'error');
-        }
-      };
-      fetchData();
+      // Just a placeholder to maintain structure
+      // Communities come from sidebar context now - no fetch needed
     }
-  }, [isOpen, currentUser, showToast]);
+  }, [isOpen, currentUser]);
 
   // Update selected community when subreddit prop changes
   useEffect(() => {
@@ -61,7 +56,7 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
 
   // Check if user is member of selected community
   const isUserMember = (communityName) => {
-    return joinedCommunities.includes(communityName);
+    return joinedCommunityNames.includes(communityName);
   };
 
   // Handle join and post
@@ -69,7 +64,10 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
     try {
       const result = await communitiesAPI.join(selectedCommunity);
       if (result.joined) {
-        setJoinedCommunities(prev => [...prev, selectedCommunity]);
+        // Update sidebar immediately
+        if (result.community) {
+          addJoinedCommunity(result.community);
+        }
         setShowJoinPrompt(false);
         showToast(`Joined r/${selectedCommunity}`, 'success');
         // Now submit the post

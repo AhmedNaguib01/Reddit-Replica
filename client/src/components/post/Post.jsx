@@ -4,10 +4,11 @@ import { createPortal } from 'react-dom';
 import { ArrowBigUp, ArrowBigDown, MessageSquare, Share2, Sparkles, MoreHorizontal, Edit, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useSidebar } from '../../context/SidebarContext';
 import ShareModal from './ShareModal';
 import EditPostModal from './EditPostModal';
 import ConfirmModal from '../common/ConfirmModal';
-import { postsAPI } from '../../services/api';
+import { postsAPI, communitiesAPI } from '../../services/api';
 import '../../styles/Post.css';
 
 const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated, initialJoined }) => {
@@ -29,6 +30,7 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
   const optionsRef = useRef(null);
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const { addJoinedCommunity, removeJoinedCommunity } = useSidebar();
   
   const isOwner = currentUser && currentUser.username === post.author;
 
@@ -115,9 +117,16 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
     }
 
     try {
-      const { communitiesAPI } = await import('../../services/api');
       const result = await communitiesAPI.join(post.subreddit);
       setJoined(result.joined);
+      
+      // Update sidebar immediately
+      if (result.joined && result.community) {
+        addJoinedCommunity(result.community);
+      } else if (!result.joined) {
+        removeJoinedCommunity(post.subreddit);
+      }
+      
       showToast(
         result.joined ? `Joined r/${post.subreddit}` : `Left r/${post.subreddit}`,
         'success'
