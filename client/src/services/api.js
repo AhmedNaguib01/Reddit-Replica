@@ -92,6 +92,10 @@ export const postsAPI = {
   getSaved: () => apiRequest('/posts/user/saved'),
   
   getByUser: (username) => apiRequest(`/posts/by-user/${username}`),
+  
+  summarize: (postId) => apiRequest(`/posts/${postId}/summarize`, {
+    method: 'POST',
+  }),
 };
 
 // Comments API

@@ -425,6 +425,40 @@ router.post('/:id/vote', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/posts/:id/summarize - Summarize post using AI
+router.post('/:id/summarize', optionalAuth, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id).lean();
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Check if Gemini API key is configured
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
+      return res.status(503).json({ message: 'AI summarization is not configured' });
+    }
+
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    // Try gemini-1.5-flash first, fallback models: gemini-pro, gemini-1.0-pro
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+    // Prepare content for summarization
+    const contentToSummarize = `Title: ${post.title}\n\nContent: ${post.content || 'No additional content'}`;
+    
+    const prompt = `Summarize this Reddit post in 2-3 concise sentences. Be direct and capture the main point:\n\n${contentToSummarize}`;
+
+    const result = await model.generateContent(prompt);
+    const summary = result.response.text();
+
+    res.status(200).json({ summary });
+  } catch (error) {
+    console.error('Summarize error:', error);
+    res.status(500).json({ message: 'Failed to generate summary' });
+  }
+});
+
 // POST /api/posts/:id/save - Save/unsave post (protected)
 router.post('/:id/save', authenticateToken, async (req, res) => {
   try {

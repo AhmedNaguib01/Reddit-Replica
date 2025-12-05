@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
-import { ArrowBigUp, ArrowBigDown, MessageSquare, Share2, Sparkles, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ArrowBigUp, ArrowBigDown, MessageSquare, Share2, Sparkles, MoreHorizontal, Edit, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import ShareModal from './ShareModal';
@@ -15,6 +16,9 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [summary, setSummary] = useState('');
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const [voteState, setVoteState] = useState(post.userVote || null);
   const [localVoteCount, setLocalVoteCount] = useState(
     post.voteCount ?? (post.upvotes - (post.downvotes || 0)) ?? post.votes ?? 0
@@ -184,6 +188,30 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
     }
   };
 
+  // Handle AI summarize
+  const handleSummarize = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsSummaryModalOpen(true);
+    
+    // If we already have a summary, don't fetch again
+    if (summary) return;
+    
+    setIsSummarizing(true);
+    try {
+      const postId = post._id || post.id;
+      const result = await postsAPI.summarize(postId);
+      setSummary(result.summary);
+    } catch (error) {
+      console.error('Summarize error:', error);
+      setSummary('Failed to generate summary. Please try again later.');
+      showToast('Failed to generate summary', 'error');
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   if (isDeleting) {
     return null; // Hide the post while deleting
   }
@@ -299,8 +327,12 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
           <span>Share</span>
         </button>
         
-        {/* AI Pill */}
-        <button className="action-pill btn-award" onClick={(e) => e.stopPropagation()}>
+        {/* AI Summarize Pill */}
+        <button 
+          className="action-pill btn-ai" 
+          onClick={handleSummarize}
+          title="Summarize with AI"
+        >
           <Sparkles size={18} />
         </button>
       </div>
@@ -328,6 +360,41 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
         confirmText="Delete"
         type="danger"
       />
+
+      {/* AI Summary Modal - rendered via portal to escape post layout */}
+      {isSummaryModalOpen && createPortal(
+        <div className="summary-overlay" onClick={() => setIsSummaryModalOpen(false)}>
+          <div className="summary-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="summary-modal-header">
+              <div className="summary-modal-title">
+                <Sparkles size={20} className="summary-icon" />
+                <span>AI Summary</span>
+              </div>
+              <button 
+                className="summary-modal-close" 
+                onClick={() => setIsSummaryModalOpen(false)}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="summary-modal-content">
+              {isSummarizing ? (
+                <div className="summary-loading">
+                  <div className="summary-spinner"></div>
+                  <span>Generating summary...</span>
+                </div>
+              ) : (
+                <p className="summary-text">{summary}</p>
+              )}
+            </div>
+            <div className="summary-modal-footer">
+              <span className="summary-powered">Powered by Google Gemini</span>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </article>
   );
 };
