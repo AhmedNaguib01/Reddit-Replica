@@ -8,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const LoginModal = ({ isOpen, onClose }) => {
-  const [mode, setMode] = useState('login'); // 'login', 'signup-email', 'signup-details', 'forgot-password', 'forgot-success'
+  const [mode, setMode] = useState('login'); // 'login', 'signup-email', 'signup-details', 'forgot-password', 'forgot-success', 'forgot-google'
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -255,7 +255,12 @@ const LoginModal = ({ isOpen, onClose }) => {
       if (response.ok) {
         setMode('forgot-success');
       } else {
-        setError(data.message || 'Failed to send reset email');
+        // Check if this is a Google account
+        if (data.isGoogleAccount) {
+          setMode('forgot-google');
+        } else {
+          setError(data.message || 'Failed to send reset email');
+        }
       }
     } catch (error) {
       console.error('Forgot password error:', error);
@@ -485,6 +490,26 @@ const LoginModal = ({ isOpen, onClose }) => {
               <h2>Check your email</h2>
               <p className="legal-text">
                 If an account exists for <strong>{email}</strong>, you'll receive a password reset link shortly.
+              </p>
+            </div>
+
+            <button className="btn-submit" onClick={switchToLogin}>
+              Back to Log In
+            </button>
+          </>
+        )}
+
+        {/* GOOGLE ACCOUNT - NO PASSWORD RESET */}
+        {mode === 'forgot-google' && (
+          <>
+            <div className="modal-header">
+              <h2>Google Account</h2>
+              <p className="legal-text">
+                The account associated with <strong>{email}</strong> was created using Google Sign-In. 
+                Password reset is not available for accounts that joined using Google authentication.
+              </p>
+              <p className="legal-text" style={{ marginTop: '12px' }}>
+                Please use the "Continue with Google" button to sign in to your account.
               </p>
             </div>
 

@@ -237,6 +237,14 @@ router.post(
         });
       }
 
+      // Check if user signed up with Google OAuth
+      if (user.authProvider === 'google' && !user.password) {
+        return res.status(400).json({ 
+          message: 'This account was created using Google Sign-In. Please use Google to access your account.',
+          isGoogleAccount: true
+        });
+      }
+
       // Generate reset token
       const resetToken = crypto.randomBytes(32).toString('hex');
       const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');

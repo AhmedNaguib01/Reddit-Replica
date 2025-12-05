@@ -218,10 +218,13 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
                       <Settings size={16} />
                       Edit
                     </button>
-                    <button className="btn-profile-action btn-secondary" onClick={() => setIsChangePasswordOpen(true)}>
-                      <Lock size={16} />
-                      Change Password
-                    </button>
+                    {/* Only show Change Password for users who signed up with email/password (not Google) */}
+                    {currentUser?.authProvider !== 'google' && (
+                      <button className="btn-profile-action btn-secondary" onClick={() => setIsChangePasswordOpen(true)}>
+                        <Lock size={16} />
+                        Change Password
+                      </button>
+                    )}
                   </>
                 ) : (
                   <button 

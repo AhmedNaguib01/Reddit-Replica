@@ -108,33 +108,36 @@ const RightSidebar = ({ communityData, onCreatePost }) => {
   // CASE 2: Home Page (Popular Communities Widget)
   return (
     <aside className="right-sidebar">
-      <div className="widget-container">
-        <div className="widget-header">
-          <h3>POPULAR COMMUNITIES</h3>
+      {/* Only show Popular Communities for logged-out users */}
+      {!currentUser && (
+        <div className="widget-container">
+          <div className="widget-header">
+            <h3>POPULAR COMMUNITIES</h3>
+          </div>
+          <ul className="community-list">
+            {displayedCommunities.map((community, index) => (
+              <li key={community._id || community.id || community.name} className="community-item">
+                <div className="community-rank">{index + 1}</div>
+                <img src={community.iconUrl} alt="" className="community-icon" />
+                <div className="community-info">
+                  <Link to={`/r/${community.name}`} className="community-name">
+                    r/{community.name}
+                  </Link>
+                  <span className="community-members">{community.members || community.memberCount} members</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <button 
+            className="btn-see-more" 
+            onClick={() => setShowAll(!showAll)}
+          >
+            {showAll ? 'Show less' : 'See more'}
+          </button>
         </div>
-        <ul className="community-list">
-          {displayedCommunities.map((community, index) => (
-            <li key={community._id || community.id || community.name} className="community-item">
-              <div className="community-rank">{index + 1}</div>
-              <img src={community.iconUrl} alt="" className="community-icon" />
-              <div className="community-info">
-                <Link to={`/r/${community.name}`} className="community-name">
-                  r/{community.name}
-                </Link>
-                <span className="community-members">{community.members || community.memberCount} members</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-        <button 
-          className="btn-see-more" 
-          onClick={() => setShowAll(!showAll)}
-        >
-          {showAll ? 'Show less' : 'See more'}
-        </button>
-      </div>
+      )}
       
-      <div className="right-sidebar-footer">
+      <div className={`right-sidebar-footer${currentUser ? ' sticky' : ''}`}>
         <div className="footer-links">
           <Link to="/rules" className="footer-link">Reddit Rules</Link>
           <Link to="/privacy" className="footer-link">Privacy Policy</Link>

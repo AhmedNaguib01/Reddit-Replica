@@ -156,6 +156,10 @@ button:disabled {
 
 .page-right-sidebar {
   width: 312px;
+  position: sticky;
+  top: 80px; /* Below header */
+  height: fit-content;
+  align-self: flex-start;
 }
 
 /* Scrollbar Styling */
