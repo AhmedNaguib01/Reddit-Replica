@@ -2,12 +2,14 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const UserActivity = require('../models/UserActivity');
 const { authenticateToken } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../utils/email');
 
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Helper function to generate JWT token
 const generateToken = (user) => {
@@ -80,6 +82,84 @@ router.post(
     }
   }
 );
+
+// POST /api/auth/google - Google OAuth authentication
+router.post('/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: 'Google credential is required' });
+    }
+
+    // Verify the Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    // Check if user exists with this Google ID
+    let user = await User.findOne({ googleId });
+
+    if (!user) {
+      // Check if email already exists (user registered with email/password)
+      const existingEmailUser = await User.findOne({ email: email.toLowerCase() });
+      
+      if (existingEmailUser) {
+        // Link Google account to existing user
+        existingEmailUser.googleId = googleId;
+        existingEmailUser.authProvider = existingEmailUser.authProvider === 'local' ? 'local' : 'google';
+        await existingEmailUser.save();
+        user = existingEmailUser;
+      } else {
+        // Create new user with Google account
+        // Generate a unique username from email or name
+        let baseUsername = (name || email.split('@')[0])
+          .replace(/[^a-zA-Z0-9_]/g, '')
+          .substring(0, 15);
+        
+        let username = baseUsername;
+        let counter = 1;
+        
+        // Ensure username is unique
+        while (await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } })) {
+          username = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        // Ensure username meets minimum length
+        if (username.length < 3) {
+          username = `user${Date.now().toString().slice(-6)}`;
+        }
+
+        user = await User.create({
+          email: email.toLowerCase(),
+          username,
+          googleId,
+          authProvider: 'google',
+          avatar: picture || undefined,
+        });
+
+        // Create user activity record
+        await UserActivity.create({ user: user._id });
+      }
+    }
+
+    // Generate JWT token
+    const token = generateToken(user);
+
+    res.status(200).json({
+      user: user.toJSON(),
+      token,
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(401).json({ message: 'Invalid Google credential' });
+  }
+});
 
 // POST /api/auth/login
 router.post(

@@ -34,9 +34,9 @@
 }
 
 .logo-text {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: bold;
-  color: var(--color-primary-dark);
+  color: white;
   letter-spacing: -1px;
   transition: color var(--transition-fast);
 }
@@ -554,6 +554,14 @@
   display: none;
 }
 
+button.desktop-only {
+  display: inline-flex;
+}
+
+button.mobile-only {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .desktop-only {
     display: none !important;
@@ -561,5 +569,9 @@
   
   .mobile-only {
     display: flex !important;
+  }
+  
+  button.mobile-only {
+    display: inline-flex !important;
   }
 }

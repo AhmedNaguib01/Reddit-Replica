@@ -358,8 +358,25 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
 
       {/* Right: Actions */}
       <div className="header-right">
+        {/* Dark/Light mode toggle */}
         <button 
           className="btn btn-icon" 
+          onClick={onToggleDarkMode}
+          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          title={isDarkMode ? "Light mode" : "Dark mode"}
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
+        {/* Desktop: Get App button */}
+        <button className="btn btn-get-app desktop-only" aria-label="Get App">
+          <Smartphone size={18} />
+          Get App
+        </button>
+
+        {/* Mobile only: Create Post button */}
+        <button 
+          className="btn btn-icon mobile-only" 
           onClick={handleCreatePostClick}
           aria-label="Create Post"
           title="Create Post"
@@ -377,15 +394,6 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
         )}
 
         {currentUser && <NotificationsDropdown />}
-
-        <button 
-          className="btn btn-icon" 
-          onClick={onToggleDarkMode}
-          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-          title={isDarkMode ? "Light mode" : "Dark mode"}
-        >
-          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
         
         {loading ? (
           <div className="btn btn-secondary" style={{ opacity: 0.5, pointerEvents: 'none' }}>
@@ -408,7 +416,14 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
             </div>
           </>
         ) : (
-          <GuestMenu onLoginClick={onLoginClick} />
+          <>
+            {/* Desktop: Log In button */}
+            <button className="btn btn-primary desktop-only" onClick={onLoginClick}>
+              Log In
+            </button>
+            {/* Both: Three dots menu */}
+            <GuestMenu onLoginClick={onLoginClick} />
+          </>
         )}
       </div>
 

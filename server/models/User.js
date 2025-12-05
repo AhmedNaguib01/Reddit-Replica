@@ -20,7 +20,20 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true
+    required: function() {
+      // Password is required only if not using Google OAuth
+      return !this.googleId;
+    }
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true // Allows multiple null values
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
   },
   resetPasswordToken: String,
   resetPasswordExpires: Date,
@@ -53,7 +66,7 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function() {
-  if (!this.isModified('password')) return;
+  if (!this.isModified('password') || !this.password) return;
   // Only hash if not already hashed (bcrypt hashes start with $2)
   if (!this.password.startsWith('$2')) {
     this.password = await bcrypt.hash(this.password, 10);
@@ -62,6 +75,7 @@ userSchema.pre('save', async function() {
 
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
@@ -81,6 +95,7 @@ userSchema.methods.getFormattedCakeDay = function() {
 userSchema.methods.toJSON = function() {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.googleId;
   delete obj.resetPasswordToken;
   delete obj.resetPasswordExpires;
   obj.karma = this.getFormattedKarma();

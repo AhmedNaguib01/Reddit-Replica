@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { X, Globe, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft } from 'lucide-react';
 import '../../styles/LoginModal.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const LoginModal = ({ isOpen, onClose }) => {
   const [mode, setMode] = useState('login'); // 'login', 'signup-email', 'signup-details', 'forgot-password', 'forgot-success'
@@ -13,6 +14,7 @@ const LoginModal = ({ isOpen, onClose }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const { login } = useAuth();
 
   const resetForm = () => {
@@ -21,6 +23,7 @@ const LoginModal = ({ isOpen, onClose }) => {
     setPassword('');
     setError('');
     setLoading(false);
+    setGoogleLoading(false);
   };
 
   const handleClose = () => {
@@ -28,6 +31,80 @@ const LoginModal = ({ isOpen, onClose }) => {
     setMode('login');
     onClose();
   };
+
+  // Handle Google Sign-In response
+  const handleGoogleResponse = useCallback(async (response) => {
+    if (!response.credential) {
+      setError('Google sign-in failed. Please try again.');
+      return;
+    }
+
+    setGoogleLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        login(data.user, data.token);
+        handleClose();
+      } else {
+        setError(data.message || 'Google authentication failed');
+      }
+    } catch (err) {
+      console.error('Google auth error:', err);
+      setError('Network error. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [login]);
+
+  // Initialize Google Sign-In
+  useEffect(() => {
+    if (!isOpen || !GOOGLE_CLIENT_ID || !window.google) return;
+
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+        });
+
+        // Render button for login mode
+        const loginBtn = document.getElementById('google-signin-btn-login');
+        if (loginBtn) {
+          window.google.accounts.id.renderButton(loginBtn, {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'continue_with',
+          });
+        }
+
+        // Render button for signup mode
+        const signupBtn = document.getElementById('google-signin-btn-signup');
+        if (signupBtn) {
+          window.google.accounts.id.renderButton(signupBtn, {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'continue_with',
+          });
+        }
+      } catch (err) {
+        console.error('Google Sign-In initialization error:', err);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, mode, handleGoogleResponse]);
 
   // Check if email is available and continue to next step
   const handleEmailContinue = async (e) => {
@@ -218,13 +295,15 @@ const LoginModal = ({ isOpen, onClose }) => {
               </p>
             </div>
 
-            <div className="auth-buttons">
-              <button className="btn-auth">
-                <Globe size={20} /> Continue With Google
-              </button>
-            </div>
-
-            <div className="divider"><span>OR</span></div>
+            {GOOGLE_CLIENT_ID && (
+              <>
+                <div className="auth-buttons">
+                  <div id="google-signin-btn-login" className="google-btn-container"></div>
+                  {googleLoading && <p className="google-loading">Signing in with Google...</p>}
+                </div>
+                <div className="divider"><span>OR</span></div>
+              </>
+            )}
 
             <form className="login-form" onSubmit={handleLogin}>
               {error && <div className="error-message">{error}</div>}
@@ -276,13 +355,15 @@ const LoginModal = ({ isOpen, onClose }) => {
               </p>
             </div>
 
-            <div className="auth-buttons">
-              <button className="btn-auth">
-                <Globe size={20} /> Continue With Google
-              </button>
-            </div>
-
-            <div className="divider"><span>OR</span></div>
+            {GOOGLE_CLIENT_ID && (
+              <>
+                <div className="auth-buttons">
+                  <div id="google-signin-btn-signup" className="google-btn-container"></div>
+                  {googleLoading && <p className="google-loading">Signing in with Google...</p>}
+                </div>
+                <div className="divider"><span>OR</span></div>
+              </>
+            )}
 
             <form className="login-form" onSubmit={handleEmailContinue}>
               {error && <div className="error-message">{error}</div>}

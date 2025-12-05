@@ -160,6 +160,24 @@
   color: var(--color-text-primary);
 }
 
+/* Google Sign-In Button Container */
+.google-btn-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.google-btn-container > div {
+  width: 100% !important;
+}
+
+.google-loading {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 8px;
+}
+
 /* --- Divider --- */
 .divider {
   display: flex;
