@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { communitiesAPI } from '../services/api';
 import '../styles/ExplorePage.css';
@@ -11,20 +12,43 @@ const ExplorePage = ({ isSidebarCollapsed, onToggleSidebar }) => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchCommunities = async () => {
       try {
         setLoading(true);
         const data = await communitiesAPI.getAll();
-        setCommunities(data);
+        if (isMounted) {
+          setCommunities(data);
+        }
       } catch (error) {
         console.error('Error fetching communities:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     fetchCommunities();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const filteredCommunities = selectedCategory === 'All' 
@@ -39,8 +63,8 @@ const ExplorePage = ({ isSidebarCollapsed, onToggleSidebar }) => {
         <div style={{ flex: 1, padding: '20px 24px', maxWidth: '1010px' }}>
           <h1 className="explore-title">Explore Communities</h1>
           
-          {/* Category Filters */}
-          <div className="category-filters">
+          {/* Category Filters - Desktop */}
+          <div className="category-filters desktop-filters">
             {communityCategories.map((category) => (
               <button
                 key={category}
@@ -50,6 +74,33 @@ const ExplorePage = ({ isSidebarCollapsed, onToggleSidebar }) => {
                 {category}
               </button>
             ))}
+          </div>
+
+          {/* Category Dropdown - Mobile */}
+          <div className="category-dropdown-container mobile-dropdown" ref={dropdownRef}>
+            <button 
+              className="category-dropdown-trigger"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              <span>{selectedCategory}</span>
+              <ChevronDown size={18} className={isDropdownOpen ? 'rotated' : ''} />
+            </button>
+            {isDropdownOpen && (
+              <div className="category-dropdown-menu">
+                {communityCategories.map((category) => (
+                  <button
+                    key={category}
+                    className={`category-dropdown-item ${selectedCategory === category ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedCategory(category);
+                      setIsDropdownOpen(false);
+                    }}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -66,7 +117,7 @@ const ExplorePage = ({ isSidebarCollapsed, onToggleSidebar }) => {
                   >
                     <div className="community-card-banner" style={{ backgroundImage: `url(${community.bannerUrl})` }} />
                     <div className="community-card-content">
-                      <img src={community.iconUrl} alt={community.displayName || community.name} className="community-card-icon" />
+                      <img src={community.iconUrl} alt={community.displayName || community.name} className="community-card-icon" loading="lazy" />
                       <h3 className="community-card-name">r/{community.name}</h3>
                       <p className="community-card-description">{community.description}</p>
                       <div className="community-card-stats">

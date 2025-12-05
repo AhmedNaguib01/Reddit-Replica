@@ -74,6 +74,7 @@ commentSchema.methods.toJSON = function() {
 // Indexes
 commentSchema.index({ post: 1, createdAt: 1 });
 commentSchema.index({ author: 1 });
+commentSchema.index({ authorUsername: 1, createdAt: -1 }); // For fetching comments by username
 commentSchema.index({ parentComment: 1 });
 
 module.exports = mongoose.model('Comment', commentSchema);

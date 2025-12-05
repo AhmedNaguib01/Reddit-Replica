@@ -15,34 +15,48 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchData = async () => {
+      if (!query.trim()) {
+        setPosts([]);
+        setCommunities([]);
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+      
       try {
         setLoading(true);
+        // Use search endpoint for posts - server-side filtering is more efficient
         const [postsData, communitiesData, usersData] = await Promise.all([
-          postsAPI.getAll(),
+          postsAPI.search(query),
           communitiesAPI.getAll(),
-          query ? usersAPI.search(query) : Promise.resolve([])
+          usersAPI.search(query)
         ]);
-        setPosts(postsData);
-        setCommunities(communitiesData);
-        setUsers(usersData);
+        
+        if (isMounted) {
+          setPosts(postsData);
+          setCommunities(communitiesData);
+          setUsers(usersData);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [query]);
 
-  // Search in posts
-  const matchingPosts = posts.filter(post => 
-    post.title?.toLowerCase().includes(query.toLowerCase()) ||
-    (post.content && post.content.toLowerCase().includes(query.toLowerCase())) ||
-    post.author?.toLowerCase().includes(query.toLowerCase()) ||
-    post.subreddit?.toLowerCase().includes(query.toLowerCase()) ||
-    post.communityName?.toLowerCase().includes(query.toLowerCase())
-  );
+  // Posts are already filtered server-side
+  const matchingPosts = posts;
 
   // Search in communities
   const matchingCommunities = communities.filter(community =>

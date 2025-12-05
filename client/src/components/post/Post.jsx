@@ -9,7 +9,7 @@ import ConfirmModal from '../common/ConfirmModal';
 import { postsAPI } from '../../services/api';
 import '../../styles/Post.css';
 
-const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated }) => {
+const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated, initialJoined }) => {
   const navigate = useNavigate();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -20,7 +20,7 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
     post.voteCount ?? (post.upvotes - (post.downvotes || 0)) ?? post.votes ?? 0
   );
   const [localPost, setLocalPost] = useState(post);
-  const [joined, setJoined] = useState(false);
+  const [joined, setJoined] = useState(initialJoined || false);
   const [isDeleting, setIsDeleting] = useState(false);
   const optionsRef = useRef(null);
   const { currentUser } = useAuth();
@@ -93,26 +93,12 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
     }
   };
 
-  // Check if user has joined this community
+  // Update joined state when initialJoined prop changes
   useEffect(() => {
-    const checkJoinStatus = async () => {
-      if (!currentUser) {
-        setJoined(false);
-        return;
-      }
-      try {
-        const { communitiesAPI } = await import('../../services/api');
-        const joinedCommunities = await communitiesAPI.getJoined();
-        const isJoined = joinedCommunities.some(c => 
-          c.name === post.subreddit || c.name === post.communityName
-        );
-        setJoined(isJoined);
-      } catch (error) {
-        console.error('Error checking join status:', error);
-      }
-    };
-    checkJoinStatus();
-  }, [currentUser, post.subreddit, post.communityName]);
+    if (initialJoined !== undefined) {
+      setJoined(initialJoined);
+    }
+  }, [initialJoined]);
 
   // Handle join
   const handleJoin = async (e) => {
@@ -268,7 +254,12 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
       <div className="post-content-new">
         {localPost.type === 'image' && (
            <div className="media-container">
-             <img src={localPost.content} alt={localPost.title} />
+             <img 
+               src={localPost.content} 
+               alt={localPost.title} 
+               loading="lazy"
+               decoding="async"
+             />
            </div>
         )}
         {localPost.type === 'text' && (

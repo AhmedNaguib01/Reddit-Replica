@@ -32,20 +32,25 @@ const CommunityPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =>
     const fetchCommunity = async () => {
       try {
         setLoading(true);
-        const data = await communitiesAPI.getById(subreddit);
+        
+        // Fetch community data and joined communities in parallel
+        // Use cached version to avoid unnecessary API calls
+        const fetchPromises = [communitiesAPI.getById(subreddit)];
+        if (currentUser) {
+          fetchPromises.push(communitiesAPI.getJoinedCached().catch(() => []));
+        }
+        
+        const results = await Promise.all(fetchPromises);
+        const [data, joinedCommunities] = results;
+        
         setCommunityData(data);
         
         // Check if user has joined this community
-        if (currentUser) {
-          try {
-            const joinedCommunities = await communitiesAPI.getJoined();
-            const isJoined = joinedCommunities.some(c => 
-              c.name === subreddit || c.name === data.name
-            );
-            setHasJoined(isJoined);
-          } catch (err) {
-            console.error('Error checking join status:', err);
-          }
+        if (currentUser && joinedCommunities) {
+          const isJoined = joinedCommunities.some(c => 
+            c.name === subreddit || c.name === data.name
+          );
+          setHasJoined(isJoined);
         } else {
           setHasJoined(false);
         }
@@ -76,6 +81,8 @@ const CommunityPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =>
   const handleJoinAndPost = async () => {
     try {
       const result = await communitiesAPI.join(subreddit);
+      // Clear cache after joining so next fetch gets fresh data
+      communitiesAPI.clearJoinedCache();
       if (result.joined) {
         setHasJoined(true);
         setIsJoinPromptOpen(false);

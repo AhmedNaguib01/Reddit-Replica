@@ -7,8 +7,6 @@
 .chat-container {
   display: flex;
   flex: 1;
-  max-width: 1200px;
-  margin: 0 auto;
   height: calc(100vh - 56px);
   background: var(--color-bg-card);
   overflow: hidden;
@@ -699,4 +697,99 @@
 
 .chat-message.deleted {
   cursor: default;
+}
+
+
+/* ==================== ADDITIONAL MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 480px) {
+  .chat-page {
+    min-height: calc(100vh - 50px);
+  }
+  
+  .chat-container {
+    height: calc(100vh - 50px);
+  }
+  
+  .chat-list-header {
+    padding: 12px;
+  }
+  
+  .chat-list-header h2 {
+    font-size: 16px;
+  }
+  
+  .new-chat-form {
+    padding: 10px;
+  }
+  
+  .search-input-container input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .chat-list-item {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  
+  .chat-avatar,
+  .chat-header-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  
+  .chat-window-header {
+    padding: 10px 12px;
+  }
+  
+  .chat-header-name {
+    font-size: 14px;
+  }
+  
+  .chat-messages {
+    padding: 12px;
+  }
+  
+  .chat-message {
+    max-width: 85%;
+  }
+  
+  .message-content {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  
+  .chat-input-form {
+    padding: 10px 12px;
+  }
+  
+  .chat-input-form input {
+    padding: 10px 14px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .chat-input-form button {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .chat-no-selection h3 {
+    font-size: 18px;
+  }
+  
+  .chat-no-selection p {
+    font-size: 13px;
+    padding: 0 20px;
+    text-align: center;
+  }
+  
+  .message-context-menu {
+    min-width: 120px;
+  }
+  
+  .context-menu-item {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
 }

@@ -380,3 +380,48 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* ==================== MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 480px) {
+  .comment-content {
+    padding-left: 8px;
+  }
+  
+  .comment-header {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  
+  .comment-body {
+    font-size: 13px;
+  }
+  
+  .comment-actions {
+    gap: 4px;
+  }
+  
+  .comment-action-btn {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  
+  .reply-form {
+    padding: 10px;
+  }
+  
+  .reply-form textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 50px;
+  }
+  
+  .reply-actions button {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .edit-comment-form textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}

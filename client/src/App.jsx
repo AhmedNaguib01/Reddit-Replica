@@ -27,6 +27,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { LoadingProvider } from './context/LoadingContext';
 import { SidebarProvider } from './context/SidebarContext';
+import { ChatProvider } from './context/ChatContext';
 import './styles/global.css';
 
 function App() {
@@ -36,9 +37,24 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    // Default to collapsed on mobile (< 768px)
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) return true;
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved ? JSON.parse(saved) : false;
   });
+
+  // Handle window resize to auto-collapse on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const openLogin = () => setIsLoginOpen(true);
   const closeLogin = () => setIsLoginOpen(false);
@@ -69,10 +85,11 @@ function App() {
 
   return (
     <AuthProvider>
-      <SidebarProvider>
-        <ToastProvider>
-          <LoadingProvider>
-            <Router>
+      <ChatProvider>
+        <SidebarProvider>
+          <ToastProvider>
+            <LoadingProvider>
+              <Router>
             <div className="app">
             <Header 
               onLoginClick={openLogin} 
@@ -108,9 +125,10 @@ function App() {
             <LoginModal isOpen={isLoginOpen} onClose={closeLogin} />
             </div>
             </Router>
-          </LoadingProvider>
-        </ToastProvider>
-      </SidebarProvider>
+            </LoadingProvider>
+          </ToastProvider>
+        </SidebarProvider>
+      </ChatProvider>
     </AuthProvider>
   );
 }

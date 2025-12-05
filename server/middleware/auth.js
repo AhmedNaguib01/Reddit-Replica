@@ -1,6 +1,23 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Cache for user data to avoid repeated DB queries
+const userCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+const getCachedUser = async (userId) => {
+  const cached = userCache.get(userId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.user;
+  }
+  
+  const user = await User.findById(userId).select('username avatar').lean();
+  if (user) {
+    userCache.set(userId, { user, timestamp: Date.now() });
+  }
+  return user;
+};
+
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -12,15 +29,15 @@ const authenticateToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Fetch current user data from database to get updated username
-    const user = await User.findById(decoded.id).select('-password');
+    // Use cached user data to avoid DB query on every request
+    const user = await getCachedUser(decoded.id);
     if (!user) {
       return res.status(403).json({ message: 'User not found' });
     }
     
     // Set req.user with current database values
     req.user = {
-      id: user._id.toString(),
+      id: decoded.id,
       username: user.username,
       avatar: user.avatar
     };
@@ -31,7 +48,8 @@ const authenticateToken = async (req, res, next) => {
 };
 
 // Optional authentication - doesn't fail if no token, just sets req.user if valid
-const optionalAuth = async (req, res, next) => {
+// OPTIMIZED: Uses JWT data directly without DB query for most cases
+const optionalAuth = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -43,21 +61,21 @@ const optionalAuth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Fetch current user data from database to get updated username
-    const user = await User.findById(decoded.id).select('-password');
-    if (user) {
-      req.user = {
-        id: user._id.toString(),
-        username: user.username,
-        avatar: user.avatar
-      };
-    } else {
-      req.user = null;
-    }
+    // Use JWT data directly - no DB query needed for optional auth
+    // The JWT already contains id and username from login
+    req.user = {
+      id: decoded.id,
+      username: decoded.username
+    };
   } catch (err) {
     req.user = null;
   }
   next();
 };
 
-module.exports = { authenticateToken, optionalAuth };
+// Clear user from cache (call after profile update)
+const clearUserCache = (userId) => {
+  userCache.delete(userId);
+};
+
+module.exports = { authenticateToken, optionalAuth, clearUserCache };

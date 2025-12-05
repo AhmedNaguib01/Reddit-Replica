@@ -76,3 +76,43 @@
   flex-direction: column;
   gap: 16px;
 }
+
+
+/* ==================== MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 480px) {
+  .saved-header {
+    margin-bottom: 20px;
+  }
+  
+  .saved-title-section {
+    gap: 12px;
+  }
+  
+  .saved-title-section h1 {
+    font-size: 24px;
+  }
+  
+  .saved-title-section svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .no-saved-posts {
+    padding: 40px 16px;
+    border-radius: var(--radius-lg);
+  }
+  
+  .no-saved-posts h2 {
+    font-size: 20px;
+  }
+  
+  .no-saved-posts p {
+    font-size: 14px;
+  }
+  
+  .btn-browse {
+    padding: 10px 24px;
+    font-size: 14px;
+  }
+}

@@ -81,9 +81,16 @@ userSchema.methods.getFormattedCakeDay = function() {
 userSchema.methods.toJSON = function() {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.resetPasswordToken;
+  delete obj.resetPasswordExpires;
   obj.karma = this.getFormattedKarma();
   obj.cakeDay = this.getFormattedCakeDay();
   return obj;
 };
+
+// Indexes for faster queries
+userSchema.index({ username: 1 }); // For username lookups (case-insensitive searches)
+userSchema.index({ email: 1 }); // For email lookups
+userSchema.index({ createdAt: -1 }); // For sorting by newest
 
 module.exports = mongoose.model('User', userSchema);

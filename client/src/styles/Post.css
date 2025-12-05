@@ -306,3 +306,81 @@
   margin-left: 8px;
   font-style: italic;
 }
+
+
+/* ==================== MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 768px) {
+  .post-card {
+    padding: 12px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+  }
+  
+  .post-title-new {
+    font-size: 16px;
+    line-height: 20px;
+  }
+  
+  .post-footer-new {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .action-pill {
+    padding: 5px 10px;
+    font-size: 11px;
+    height: 28px;
+  }
+  
+  .media-container img {
+    max-height: 400px;
+  }
+}
+
+@media (max-width: 480px) {
+  .post-card {
+    padding: 10px;
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+  }
+  
+  .post-header-row {
+    font-size: 11px;
+  }
+  
+  .post-sub-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+  }
+  
+  .post-title-new {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+  
+  .media-container {
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+  }
+  
+  .media-container img {
+    max-height: 300px;
+  }
+  
+  .action-pill {
+    padding: 4px 8px;
+    font-size: 10px;
+    height: 26px;
+  }
+  
+  .btn-join-sm {
+    padding: 3px 10px;
+    font-size: 11px;
+  }
+  
+  .post-options-menu {
+    min-width: 140px;
+  }
+}

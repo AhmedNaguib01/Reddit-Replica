@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -6,7 +6,7 @@ import Sidebar from '../components/layout/Sidebar';
 import { UserProfileSkeleton, PostListSkeleton } from '../components/common/LoadingSkeleton';
 import EditProfileModal from '../components/user/EditProfileModal';
 import { postsAPI, usersAPI, commentsAPI, customFeedsAPI, chatsAPI } from '../services/api';
-import { MessageSquare, Cake, Award, Bookmark, Settings, LayoutGrid, MessageCircle } from 'lucide-react';
+import { MessageSquare, Cake, Award, Bookmark, Settings, LayoutGrid, MessageCircle, ChevronDown } from 'lucide-react';
 import usePageTitle from '../hooks/usePageTitle';
 import '../styles/UserProfilePage.css';
 
@@ -26,8 +26,21 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+  const tabDropdownRef = useRef(null);
   
   const isOwnProfile = currentUser && currentUser.username === username;
+
+  // Close tab dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target)) {
+        setIsTabDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   usePageTitle(`u/${username}`);
 
@@ -35,49 +48,43 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        const [userData, allPosts, userCommentsData, followersData, followingData] = await Promise.all([
-          usersAPI.getByUsername(username),
-          postsAPI.getAll(),
+        
+        // Fetch essential data first (user profile)
+        const userData = await usersAPI.getByUsername(username);
+        setUser(userData);
+        
+        // Fetch remaining data in parallel
+        const [userPostsData, userCommentsData, followersData, followingData] = await Promise.all([
+          postsAPI.getByUser(username), // Use optimized endpoint instead of getAll
           commentsAPI.getByUser(username),
           usersAPI.getFollowers(username),
           usersAPI.getFollowing(username)
         ]);
         
-        setUser(userData);
-        // Filter posts by this user
-        const posts = allPosts.filter(p => p.author === username);
-        setUserPosts(posts);
+        setUserPosts(userPostsData);
         setUserComments(userCommentsData);
         setFollowers(followersData);
         setFollowingList(followingData);
         
-        // Check if current user is following this user
+        // Check if current user is following this user (only if logged in and not own profile)
         if (currentUser && currentUser.username !== username) {
-          try {
-            const isFollowingResult = await usersAPI.isFollowing(username);
-            setFollowing(isFollowingResult.following);
-          } catch (err) {
-            console.error('Error checking follow status:', err);
-          }
+          usersAPI.isFollowing(username)
+            .then(result => setFollowing(result.following))
+            .catch(err => console.error('Error checking follow status:', err));
         }
         
-        // Fetch saved posts if viewing own profile
+        // Fetch saved posts if viewing own profile (non-blocking)
         if (currentUser && currentUser.username === username) {
-          try {
-            const saved = await postsAPI.getSaved();
-            setSavedPosts(saved);
-          } catch (err) {
-            console.error('Error fetching saved posts:', err);
-          }
+          postsAPI.getSaved()
+            .then(saved => setSavedPosts(saved))
+            .catch(err => console.error('Error fetching saved posts:', err));
         }
 
-        // Fetch custom feeds for this user's profile
-        try {
-          const feeds = await customFeedsAPI.getByUsername(username);
-          setCustomFeeds(feeds);
-        } catch (err) {
-          console.error('Error fetching custom feeds:', err);
-        }
+        // Fetch custom feeds (non-blocking)
+        customFeedsAPI.getByUsername(username)
+          .then(feeds => setCustomFeeds(feeds))
+          .catch(err => console.error('Error fetching custom feeds:', err));
+          
       } catch (error) {
         console.error('Error fetching user data:', error);
       } finally {
@@ -225,8 +232,8 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="profile-tabs">
+          {/* Tabs - Desktop */}
+          <div className="profile-tabs desktop-tabs">
             <button 
               className={`profile-tab ${activeTab === 'overview' ? 'active' : ''}`}
               onClick={() => setActiveTab('overview')}
@@ -275,6 +282,75 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
             )}
           </div>
 
+          {/* Tabs - Mobile Dropdown */}
+          <div className="profile-tab-dropdown mobile-tab-dropdown" ref={tabDropdownRef}>
+            <button 
+              className="tab-dropdown-trigger"
+              onClick={() => setIsTabDropdownOpen(!isTabDropdownOpen)}
+            >
+              <span>
+                {activeTab === 'overview' && 'Overview'}
+                {activeTab === 'posts' && `Posts (${userPosts.length})`}
+                {activeTab === 'comments' && `Comments (${userComments.length})`}
+                {activeTab === 'followers' && `Followers (${followers.length})`}
+                {activeTab === 'following' && `Following (${followingList.length})`}
+                {activeTab === 'saved' && `Saved (${savedPosts.length})`}
+                {activeTab === 'feeds' && `Custom Feeds (${customFeeds.length})`}
+              </span>
+              <ChevronDown size={18} className={isTabDropdownOpen ? 'rotated' : ''} />
+            </button>
+            {isTabDropdownOpen && (
+              <div className="tab-dropdown-menu">
+                <button 
+                  className={`tab-dropdown-item ${activeTab === 'overview' ? 'active' : ''}`}
+                  onClick={() => { setActiveTab('overview'); setIsTabDropdownOpen(false); }}
+                >
+                  Overview
+                </button>
+                <button 
+                  className={`tab-dropdown-item ${activeTab === 'posts' ? 'active' : ''}`}
+                  onClick={() => { setActiveTab('posts'); setIsTabDropdownOpen(false); }}
+                >
+                  Posts ({userPosts.length})
+                </button>
+                <button 
+                  className={`tab-dropdown-item ${activeTab === 'comments' ? 'active' : ''}`}
+                  onClick={() => { setActiveTab('comments'); setIsTabDropdownOpen(false); }}
+                >
+                  Comments ({userComments.length})
+                </button>
+                <button 
+                  className={`tab-dropdown-item ${activeTab === 'followers' ? 'active' : ''}`}
+                  onClick={() => { setActiveTab('followers'); setIsTabDropdownOpen(false); }}
+                >
+                  Followers ({followers.length})
+                </button>
+                <button 
+                  className={`tab-dropdown-item ${activeTab === 'following' ? 'active' : ''}`}
+                  onClick={() => { setActiveTab('following'); setIsTabDropdownOpen(false); }}
+                >
+                  Following ({followingList.length})
+                </button>
+                {isOwnProfile && (
+                  <button 
+                    className={`tab-dropdown-item ${activeTab === 'saved' ? 'active' : ''}`}
+                    onClick={() => { setActiveTab('saved'); setIsTabDropdownOpen(false); }}
+                  >
+                    Saved ({savedPosts.length})
+                  </button>
+                )}
+                {customFeeds.length > 0 && (
+                  <button 
+                    className={`tab-dropdown-item ${activeTab === 'feeds' ? 'active' : ''}`}
+                    onClick={() => { setActiveTab('feeds'); setIsTabDropdownOpen(false); }}
+                  >
+                    Custom Feeds ({customFeeds.length})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Content */}
           <div className="profile-content">
             
@@ -316,7 +392,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
                     )}
                     {post.type === 'image' && (
                       <div className="post-card-image">
-                        <img src={post.content} alt={post.title} />
+                        <img src={post.content} alt={post.title} loading="lazy" decoding="async" />
                       </div>
                     )}
                     <div className="post-card-footer">
@@ -416,7 +492,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
                     )}
                     {post.type === 'image' && (
                       <div className="post-card-image">
-                        <img src={post.content} alt={post.title} />
+                        <img src={post.content} alt={post.title} loading="lazy" decoding="async" />
                       </div>
                     )}
                     <div className="post-card-footer">

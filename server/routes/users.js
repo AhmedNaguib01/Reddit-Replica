@@ -11,6 +11,9 @@ const { notifyFollow } = require('../utils/notifications');
 
 const router = express.Router();
 
+// Helper to escape regex special characters
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // GET /api/users/search - Search users by username
 router.get('/search', async (req, res) => {
   try {
@@ -21,10 +24,11 @@ router.get('/search', async (req, res) => {
     }
 
     const users = await User.find({
-      username: { $regex: q.trim(), $options: 'i' }
+      username: { $regex: escapeRegex(q.trim()), $options: 'i' }
     })
-    .select('-password')
-    .limit(10);
+    .select('-password -passwordResetToken -passwordResetExpires')
+    .limit(10)
+    .lean();
 
     res.status(200).json(users);
   } catch (error) {
@@ -53,48 +57,30 @@ router.put('/profile', authenticateToken, async (req, res) => {
     // Check if username is taken (only if changing)
     if (username && newUsername.toLowerCase() !== oldUsername.toLowerCase()) {
       const existingUser = await User.findOne({ 
-        username: { $regex: new RegExp(`^${newUsername}$`, 'i') },
+        username: { $regex: new RegExp(`^${escapeRegex(newUsername)}$`, 'i') },
         _id: { $ne: req.user.id }
-      });
+      }).lean();
+      
       if (existingUser) {
         return res.status(409).json({ message: 'Username already taken' });
       }
 
-      // Update username in all related documents
+      // Update username in all related documents (run in parallel)
       await Promise.all([
-        // Update posts
-        Post.updateMany(
-          { author: req.user.id },
-          { $set: { authorUsername: newUsername } }
-        ),
-        // Update comments
-        Comment.updateMany(
-          { author: req.user.id },
-          { $set: { authorUsername: newUsername } }
-        ),
-        // Update communities created by user
-        Community.updateMany(
-          { creator: req.user.id },
-          { $set: { creatorUsername: newUsername } }
-        ),
-        // Update notifications from this user
-        Notification.updateMany(
-          { fromUser: req.user.id },
-          { $set: { fromUsername: newUsername } }
-        ),
-        // Update chat participant usernames
+        Post.updateMany({ author: req.user.id }, { $set: { authorUsername: newUsername } }),
+        Comment.updateMany({ author: req.user.id }, { $set: { authorUsername: newUsername } }),
+        Community.updateMany({ creator: req.user.id }, { $set: { creatorUsername: newUsername } }),
+        Notification.updateMany({ fromUser: req.user.id }, { $set: { fromUsername: newUsername } }),
         Chat.updateMany(
           { participants: req.user.id },
           { $set: { 'participantUsernames.$[elem]': newUsername } },
           { arrayFilters: [{ elem: oldUsername }] }
         ),
-        // Update chat message sender usernames
         Chat.updateMany(
           { 'messages.sender': req.user.id },
           { $set: { 'messages.$[msg].senderUsername': newUsername } },
           { arrayFilters: [{ 'msg.sender': req.user.id }] }
         ),
-        // Update chat lastMessage sender username
         Chat.updateMany(
           { 'lastMessage.senderUsername': oldUsername },
           { $set: { 'lastMessage.senderUsername': newUsername } }
@@ -120,20 +106,30 @@ router.put('/profile', authenticateToken, async (req, res) => {
 // GET /api/users/:username - Get user profile
 router.get('/:username', async (req, res) => {
   try {
+    // Use case-insensitive exact match with lean for performance
     const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${req.params.username}$`, 'i') }
-    });
+      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
+    })
+    .select('-password -passwordResetToken -passwordResetExpires')
+    .lean();
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Get follower/following counts
-    const activity = await UserActivity.findOne({ user: user._id });
+    // Get follower/following counts - only select what we need
+    const activity = await UserActivity.findOne({ user: user._id })
+      .select('followers following')
+      .lean();
     
-    const userData = user.toJSON();
-    userData.followerCount = activity?.followers?.length || 0;
-    userData.followingCount = activity?.following?.length || 0;
+    // Format response
+    const userData = {
+      ...user,
+      id: user._id,
+      cakeDay: new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      followerCount: activity?.followers?.length || 0,
+      followingCount: activity?.following?.length || 0
+    };
 
     res.status(200).json(userData);
   } catch (error) {
@@ -146,8 +142,8 @@ router.get('/:username', async (req, res) => {
 router.post('/:username/follow', authenticateToken, async (req, res) => {
   try {
     const userToFollow = await User.findOne({ 
-      username: { $regex: new RegExp(`^${req.params.username}$`, 'i') }
-    });
+      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
+    }).select('_id username').lean();
     
     if (!userToFollow) {
       return res.status(404).json({ message: 'User not found' });
@@ -157,13 +153,15 @@ router.post('/:username/follow', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Cannot follow yourself' });
     }
 
-    // Get or create activity for both users
-    let followerActivity = await UserActivity.findOne({ user: req.user.id });
+    // Get or create activity for both users in parallel
+    let [followerActivity, followingActivity] = await Promise.all([
+      UserActivity.findOne({ user: req.user.id }),
+      UserActivity.findOne({ user: userToFollow._id })
+    ]);
+
     if (!followerActivity) {
       followerActivity = await UserActivity.create({ user: req.user.id });
     }
-
-    let followingActivity = await UserActivity.findOne({ user: userToFollow._id });
     if (!followingActivity) {
       followingActivity = await UserActivity.create({ user: userToFollow._id });
     }
@@ -187,12 +185,12 @@ router.post('/:username/follow', authenticateToken, async (req, res) => {
       }
       following = true;
 
-      // Notify the user being followed
-      await notifyFollow(userToFollow._id, req.user);
+      // Notify the user being followed (non-blocking)
+      notifyFollow(userToFollow._id, req.user).catch(err => console.error('Notify error:', err));
     }
 
-    await followerActivity.save();
-    await followingActivity.save();
+    // Save both in parallel
+    await Promise.all([followerActivity.save(), followingActivity.save()]);
 
     res.status(200).json({
       following,
@@ -208,15 +206,17 @@ router.post('/:username/follow', authenticateToken, async (req, res) => {
 router.get('/:username/followers', async (req, res) => {
   try {
     const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${req.params.username}$`, 'i') }
-    });
+      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
+    }).select('_id').lean();
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     const activity = await UserActivity.findOne({ user: user._id })
-      .populate('followers', '-password');
+      .select('followers')
+      .populate('followers', '-password -passwordResetToken -passwordResetExpires')
+      .lean();
     
     res.status(200).json(activity?.followers || []);
   } catch (error) {
@@ -229,15 +229,17 @@ router.get('/:username/followers', async (req, res) => {
 router.get('/:username/following', async (req, res) => {
   try {
     const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${req.params.username}$`, 'i') }
-    });
+      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
+    }).select('_id').lean();
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     const activity = await UserActivity.findOne({ user: user._id })
-      .populate('following', '-password');
+      .select('following')
+      .populate('following', '-password -passwordResetToken -passwordResetExpires')
+      .lean();
     
     res.status(200).json(activity?.following || []);
   } catch (error) {
@@ -250,15 +252,18 @@ router.get('/:username/following', async (req, res) => {
 router.get('/:username/is-following', authenticateToken, async (req, res) => {
   try {
     const userToCheck = await User.findOne({ 
-      username: { $regex: new RegExp(`^${req.params.username}$`, 'i') }
-    });
+      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
+    }).select('_id').lean();
     
     if (!userToCheck) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const activity = await UserActivity.findOne({ user: req.user.id });
-    const following = activity?.following?.includes(userToCheck._id) || false;
+    const activity = await UserActivity.findOne({ user: req.user.id })
+      .select('following')
+      .lean();
+    
+    const following = activity?.following?.some(id => id.toString() === userToCheck._id.toString()) || false;
 
     res.status(200).json({ following });
   } catch (error) {

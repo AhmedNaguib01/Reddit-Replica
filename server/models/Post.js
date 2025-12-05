@@ -82,6 +82,10 @@ postSchema.methods.toJSON = function() {
 // Indexes
 postSchema.index({ community: 1, createdAt: -1 });
 postSchema.index({ author: 1, createdAt: -1 });
+postSchema.index({ authorUsername: 1, createdAt: -1 }); // For fetching posts by username
+postSchema.index({ communityName: 1, createdAt: -1 }); // For fetching posts by community
 postSchema.index({ createdAt: -1 });
+// Text index for search - allows efficient text search on title and content
+postSchema.index({ title: 'text', content: 'text' });
 
 module.exports = mongoose.model('Post', postSchema);

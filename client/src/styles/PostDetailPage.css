@@ -200,17 +200,21 @@
 
 @media (max-width: 768px) {
   .post-detail-card {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .post-vote-section {
-    flex-direction: row;
-    justify-content: center;
+    flex-direction: column;
+    padding: 8px 4px;
+    min-width: 36px;
+  }
+
+  .post-content-section {
     padding: 12px;
   }
 
   .post-detail-title {
-    font-size: 20px;
+    font-size: 18px;
   }
 }
 
@@ -344,4 +348,51 @@
 
 .login-link:hover {
   text-decoration: underline;
+}
+
+
+/* ==================== MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 480px) {
+  .post-content-section {
+    padding: 12px;
+  }
+  
+  .post-detail-title {
+    font-size: 18px;
+  }
+  
+  .post-image-container {
+    border-radius: var(--radius-md);
+    max-height: 400px;
+  }
+  
+  .post-image-container img {
+    max-height: 400px;
+  }
+  
+  .post-detail-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .action-button {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .comment-input-card {
+    padding: 12px;
+    border-radius: var(--radius-lg);
+  }
+  
+  .comment-textarea {
+    min-height: 80px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .comments-section {
+    padding: 12px;
+    border-radius: var(--radius-lg);
+  }
 }

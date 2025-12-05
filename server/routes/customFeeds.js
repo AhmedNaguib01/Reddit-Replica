@@ -7,14 +7,25 @@ const Post = require('../models/Post');
 
 const router = express.Router();
 
+// Helper to escape regex special characters
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // GET /api/custom-feeds - Get user's custom feeds
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const feeds = await CustomFeed.find({ creator: req.user.id })
       .populate('communities', 'name iconUrl')
-      .sort({ isFavorite: -1, name: 1 });
+      .sort({ isFavorite: -1, name: 1 })
+      .lean();
 
-    res.status(200).json(feeds);
+    // Add community count to each feed
+    const formattedFeeds = feeds.map(f => ({
+      ...f,
+      id: f._id,
+      communityCount: f.communities?.length || 0
+    }));
+
+    res.status(200).json(formattedFeeds);
   } catch (error) {
     console.error('Get custom feeds error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -26,8 +37,8 @@ router.get('/user/:username', async (req, res) => {
   try {
     const User = require('../models/User');
     const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${req.params.username}$`, 'i') }
-    });
+      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
+    }).select('_id').lean();
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -39,9 +50,17 @@ router.get('/user/:username', async (req, res) => {
       showOnProfile: true
     })
       .populate('communities', 'name iconUrl')
-      .sort({ name: 1 });
+      .sort({ name: 1 })
+      .lean();
 
-    res.status(200).json(feeds);
+    // Format feeds
+    const formattedFeeds = feeds.map(f => ({
+      ...f,
+      id: f._id,
+      communityCount: f.communities?.length || 0
+    }));
+
+    res.status(200).json(formattedFeeds);
   } catch (error) {
     console.error('Get user feeds error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -52,7 +71,8 @@ router.get('/user/:username', async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const feed = await CustomFeed.findById(req.params.id)
-      .populate('communities', 'name displayName iconUrl memberCount');
+      .populate('communities', 'name displayName iconUrl memberCount')
+      .lean();
 
     if (!feed) {
       return res.status(404).json({ message: 'Custom feed not found' });
@@ -63,7 +83,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'This feed is private' });
     }
 
-    res.status(200).json(feed);
+    res.status(200).json({
+      ...feed,
+      id: feed._id,
+      communityCount: feed.communities?.length || 0
+    });
   } catch (error) {
     console.error('Get custom feed error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -73,7 +97,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // GET /api/custom-feeds/:id/posts - Get posts from custom feed communities
 router.get('/:id/posts', authenticateToken, async (req, res) => {
   try {
-    const feed = await CustomFeed.findById(req.params.id);
+    const feed = await CustomFeed.findById(req.params.id).lean();
 
     if (!feed) {
       return res.status(404).json({ message: 'Custom feed not found' });
@@ -83,21 +107,32 @@ router.get('/:id/posts', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'This feed is private' });
     }
 
-    if (feed.communities.length === 0) {
+    if (!feed.communities || feed.communities.length === 0) {
       return res.status(200).json([]);
     }
 
     const posts = await Post.find({ community: { $in: feed.communities } })
       .sort({ createdAt: -1 })
-      .limit(100);
+      .limit(50)
+      .lean();
 
-    res.status(200).json(posts);
+    // Format lean documents
+    const { getTimeAgo } = require('../utils/helpers');
+    const formattedPosts = posts.map(p => ({
+      ...p,
+      id: p._id,
+      voteCount: p.upvotes - p.downvotes,
+      timeAgo: getTimeAgo(p.createdAt),
+      subreddit: p.communityName,
+      author: p.authorUsername
+    }));
+
+    res.status(200).json(formattedPosts);
   } catch (error) {
     console.error('Get feed posts error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 
 // POST /api/custom-feeds - Create custom feed
 router.post(
@@ -122,8 +157,8 @@ router.post(
       // Check if feed with same name exists for this user
       const existing = await CustomFeed.findOne({ 
         creator: req.user.id, 
-        name: { $regex: new RegExp(`^${name}$`, 'i') }
-      });
+        name: { $regex: new RegExp(`^${escapeRegex(name)}$`, 'i') }
+      }).lean();
       
       if (existing) {
         return res.status(409).json({ message: 'You already have a feed with this name' });
@@ -215,13 +250,15 @@ router.post('/:id/communities', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    const community = await Community.findById(communityId);
+    const community = await Community.findById(communityId).lean();
     if (!community) {
       return res.status(404).json({ message: 'Community not found' });
     }
 
     // Check if user has joined this community
-    const userActivity = await UserActivity.findOne({ user: req.user.id });
+    const userActivity = await UserActivity.findOne({ user: req.user.id })
+      .select('joinedCommunities')
+      .lean();
     const isJoined = userActivity?.joinedCommunities?.some(
       c => c.toString() === communityId
     );
@@ -238,9 +275,14 @@ router.post('/:id/communities', authenticateToken, async (req, res) => {
     await feed.save();
 
     const updatedFeed = await CustomFeed.findById(feed._id)
-      .populate('communities', 'name displayName iconUrl memberCount');
+      .populate('communities', 'name displayName iconUrl memberCount')
+      .lean();
 
-    res.status(200).json(updatedFeed);
+    res.status(200).json({
+      ...updatedFeed,
+      id: updatedFeed._id,
+      communityCount: updatedFeed.communities?.length || 0
+    });
   } catch (error) {
     console.error('Add community error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -266,9 +308,14 @@ router.delete('/:id/communities/:communityId', authenticateToken, async (req, re
     await feed.save();
 
     const updatedFeed = await CustomFeed.findById(feed._id)
-      .populate('communities', 'name displayName iconUrl memberCount');
+      .populate('communities', 'name displayName iconUrl memberCount')
+      .lean();
 
-    res.status(200).json(updatedFeed);
+    res.status(200).json({
+      ...updatedFeed,
+      id: updatedFeed._id,
+      communityCount: updatedFeed.communities?.length || 0
+    });
   } catch (error) {
     console.error('Remove community error:', error);
     res.status(500).json({ message: 'Server error' });

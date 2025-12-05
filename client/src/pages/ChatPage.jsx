@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Send, ArrowLeft, Search, MessageCircle, Trash2, Reply, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 import { chatsAPI, usersAPI } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import Sidebar from '../components/layout/Sidebar';
@@ -11,6 +12,7 @@ import '../styles/ChatPage.css';
 
 const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
   const { currentUser } = useAuth();
+  const { markChatAsRead } = useChat();
   const location = useLocation();
   const { showToast } = useToast();
   const [chats, setChats] = useState([]);
@@ -103,6 +105,8 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
           }
           return data;
         });
+        // Update unread count in header after reading messages
+        markChatAsRead();
       } catch (error) {
         console.error('Error fetching messages:', error);
       }

@@ -149,3 +149,12 @@
 .copyright {
   margin: 0;
 }
+
+/* =
+=================== MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 960px) {
+  .right-sidebar {
+    display: none;
+  }
+}

@@ -12,7 +12,7 @@ const sendPasswordResetEmail = async (email, resetToken) => {
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
   
   const mailOptions = {
-    from: `"Reddit Clone" <${process.env.EMAIL_USER}>`,
+    from: `"Reddit-Replica" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Password Reset Request',
     html: `

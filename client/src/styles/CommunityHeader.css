@@ -229,3 +229,62 @@
     padding-left: 16px; /* Reset padding on mobile */
   }
 }
+
+
+/* ==================== ADDITIONAL MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 480px) {
+  .community-banner {
+    height: 100px;
+  }
+  
+  .community-icon-container {
+    width: 56px;
+    height: 56px;
+    margin-right: 12px;
+    margin-top: -10px;
+  }
+  
+  .community-default-icon {
+    font-size: 24px;
+  }
+  
+  .community-title {
+    font-size: 20px;
+  }
+  
+  .community-name-small {
+    font-size: 11px;
+  }
+  
+  .community-actions {
+    flex-wrap: wrap;
+  }
+  
+  .btn-join,
+  .btn-edit {
+    padding: 6px 20px;
+    font-size: 13px;
+  }
+  
+  .owner-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .btn-delete {
+    padding: 6px 16px;
+    font-size: 13px;
+  }
+  
+  .tab-list {
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tab-link {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}

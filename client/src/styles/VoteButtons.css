@@ -74,3 +74,19 @@
 .vote-count.downvoted {
   color: var(--color-downvote);
 }
+
+
+/* ==================== MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 480px) {
+  .vote-btn {
+    width: 28px;
+    height: 28px;
+    padding: 2px;
+  }
+  
+  .vote-count {
+    font-size: 11px;
+    min-width: 28px;
+  }
+}

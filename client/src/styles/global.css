@@ -293,3 +293,38 @@ button:disabled {
   transition-duration: var(--transition-normal);
   transition-timing-function: ease;
 }
+
+
+/* ==================== MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 960px) {
+  .page-right-sidebar {
+    display: none;
+  }
+  
+  .page-main-area {
+    padding: 16px;
+  }
+  
+  .page-main-content {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-main-area {
+    padding: 12px;
+    gap: 12px;
+  }
+  
+  /* Adjust content when sidebar is collapsed on mobile */
+  .page-content-wrapper {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-main-area {
+    padding: 8px;
+  }
+}

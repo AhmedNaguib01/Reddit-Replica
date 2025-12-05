@@ -89,13 +89,13 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
               <h3 className="sidebar-title">RECENT</h3>
               {recentCommunities.slice(0, 3).map((community) => (
                 <Link 
-                  to={`/r/${community.id}`} 
-                  key={community.id} 
+                  to={`/r/${community.name || community.id}`} 
+                  key={community._id || community.id || community.name} 
                   className="sidebar-link community-link"
-                  data-tooltip={community.name}
+                  data-tooltip={`r/${community.name}`}
                 >
                   <Clock size={18} className="sidebar-icon" />
-                  <span className="sidebar-text">{community.name}</span>
+                  <span className="sidebar-text">r/{community.name}</span>
                 </Link>
               ))}
             </div>

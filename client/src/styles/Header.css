@@ -18,11 +18,23 @@
 .header-left {
   display: flex;
   align-items: center;
-  min-width: 240px; /* Aligns with sidebar width usually */
+  min-width: 180px;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reddit-logo-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
 .logo-text {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: bold;
   color: var(--color-primary-dark);
   letter-spacing: -1px;
@@ -147,10 +159,30 @@
   transform: rotate(15deg);
 }
 
+/* Badge for notifications/messages */
+.btn-with-badge {
+  position: relative;
+}
+
+.btn-with-badge .badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: var(--radius-full);
+  min-width: 16px;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .header-left { min-width: auto; }
-  .logo-text { display: none; } /* Or show icon only */
-  .btn-secondary { display: none; } /* Hide Get App on small screens */
+  .logo-text { display: none; }
+  .btn-secondary { display: none; }
+  .reddit-logo-icon { width: 28px; height: 28px; }
 }
 
 /*
@@ -380,4 +412,154 @@
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   letter-spacing: 0.5px;
+}
+
+
+/* ==================== MOBILE RESPONSIVENESS ==================== */
+
+@media (max-width: 768px) {
+  .header-container {
+    padding: 0 12px;
+    height: 50px;
+  }
+  
+  .header-left {
+    min-width: auto;
+  }
+  
+  .header-center {
+    margin: 0 8px;
+  }
+  
+  .header-right {
+    gap: 4px;
+  }
+  
+  .btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .btn-icon {
+    padding: 6px;
+  }
+  
+  .btn-get-app {
+    display: none;
+  }
+  
+  .search-suggestions {
+    left: -50px;
+    right: -50px;
+    max-height: 60vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 0 8px;
+  }
+  
+  .header-center {
+    margin: 0 4px;
+  }
+  
+  .search-input-wrapper {
+    padding: 0 10px;
+    height: 36px;
+  }
+  
+  .search-input {
+    font-size: 13px;
+  }
+  
+  .btn-primary {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  .guest-menu-dropdown {
+    min-width: 200px;
+    right: -8px;
+  }
+}
+
+
+/* User Menu (Mobile - for logged in users) */
+.user-menu-container {
+  position: relative;
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  z-index: 1000;
+  overflow: hidden;
+  animation: fadeInDown 0.15s ease-out;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+
+.user-menu-item:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.user-menu-item svg {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.user-menu-item:hover svg {
+  color: var(--color-text-primary);
+}
+
+.user-menu-item-danger {
+  color: var(--color-error);
+}
+
+.user-menu-item-danger svg {
+  color: var(--color-error);
+}
+
+.user-menu-item-danger:hover {
+  background-color: rgba(255, 69, 0, 0.1);
+}
+
+/* Desktop/Mobile visibility helpers */
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  
+  .mobile-only {
+    display: flex !important;
+  }
 }

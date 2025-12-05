@@ -82,4 +82,10 @@ communitySchema.methods.toJSON = function() {
   return obj;
 };
 
+// Indexes for faster queries
+communitySchema.index({ name: 1 });
+communitySchema.index({ memberCount: -1 });
+communitySchema.index({ category: 1 });
+communitySchema.index({ creator: 1 });
+
 module.exports = mongoose.model('Community', communitySchema);

@@ -21,15 +21,15 @@ const NotificationsDropdown = () => {
     }
   }, [isOpen, currentUser]);
 
-  // Fetch notifications on mount for badge count and poll every 30 seconds
+  // Fetch notifications on mount for badge count and poll every 60 seconds (reduced from 30)
   useEffect(() => {
     if (currentUser) {
       fetchNotifications();
       
-      // Poll for new notifications every 30 seconds
+      // Poll for new notifications every 60 seconds (reduced frequency for better performance)
       const interval = setInterval(() => {
         fetchNotifications();
-      }, 30000);
+      }, 60000);
       
       return () => clearInterval(interval);
     }

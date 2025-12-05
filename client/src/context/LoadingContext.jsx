@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 const LoadingContext = createContext();
 
@@ -12,26 +12,24 @@ export const useLoading = () => {
 
 export const LoadingProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingCount, setLoadingCount] = useState(0);
+  const loadingCountRef = useRef(0);
 
-  const startLoading = () => {
-    setLoadingCount(prev => {
-      const newCount = prev + 1;
-      if (newCount === 1) setIsLoading(true);
-      return newCount;
-    });
-  };
+  const startLoading = useCallback(() => {
+    loadingCountRef.current += 1;
+    if (loadingCountRef.current === 1) {
+      setIsLoading(true);
+    }
+  }, []);
 
-  const stopLoading = () => {
-    setLoadingCount(prev => {
-      const newCount = Math.max(0, prev - 1);
-      if (newCount === 0) setIsLoading(false);
-      return newCount;
-    });
-  };
+  const stopLoading = useCallback(() => {
+    loadingCountRef.current = Math.max(0, loadingCountRef.current - 1);
+    if (loadingCountRef.current === 0) {
+      setIsLoading(false);
+    }
+  }, []);
 
-  // Expose loadingCount for debugging if needed
-  const value = { isLoading, startLoading, stopLoading, loadingCount };
+  // Value object - startLoading and stopLoading are stable due to useCallback with empty deps
+  const value = { isLoading, startLoading, stopLoading };
 
   return (
     <LoadingContext.Provider value={value}>

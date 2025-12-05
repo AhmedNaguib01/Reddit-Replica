@@ -7,28 +7,47 @@ const Vote = require('../models/Vote');
 const User = require('../models/User');
 const UserActivity = require('../models/UserActivity');
 const { notifyPostUpvote } = require('../utils/notifications');
+const { getTimeAgo } = require('../utils/helpers');
 
 const router = express.Router();
 
-// Helper to add user vote info to posts
+// Server-side cache for posts (reduces DB queries significantly)
+let postsCache = null;
+let postsCacheTimestamp = 0;
+const POSTS_CACHE_DURATION = 30 * 1000; // 30 seconds cache
+
+const invalidatePostsCache = () => {
+  postsCache = null;
+  postsCacheTimestamp = 0;
+};
+
+// Helper to add user vote info to posts - OPTIMIZED
 const addUserVoteInfo = async (posts, userId) => {
   if (!userId) return posts.map(p => p.toJSON ? p.toJSON() : p);
   
   const postIds = posts.map(p => p._id);
-  const votes = await Vote.find({
-    user: userId,
-    target: { $in: postIds },
-    targetType: 'post'
-  });
+  
+  // Batch both queries in parallel for better performance
+  const [votes, activity] = await Promise.all([
+    Vote.find({
+      user: userId,
+      target: { $in: postIds },
+      targetType: 'post'
+    }).select('target voteType').lean(),
+    UserActivity.findOne({ user: userId }).select('savedPosts').lean()
+  ]);
 
   const voteMap = {};
   votes.forEach(v => {
     voteMap[v.target.toString()] = v.voteType === 1 ? 'up' : 'down';
   });
 
+  const savedPostIds = new Set(activity?.savedPosts?.map(id => id.toString()) || []);
+
   return posts.map(p => {
     const postObj = p.toJSON ? p.toJSON() : p;
     postObj.userVote = voteMap[p._id.toString()] || null;
+    postObj.saved = savedPostIds.has(p._id.toString());
     return postObj;
   });
 };
@@ -37,17 +56,44 @@ const addUserVoteInfo = async (posts, userId) => {
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const { subreddit } = req.query;
+    const now = Date.now();
     
-    let query = {};
-    if (subreddit) {
-      query.communityName = { $regex: new RegExp(`^${subreddit}`, 'i') };
+    let formattedPosts;
+    
+    // Use cache for homepage (no subreddit filter)
+    if (!subreddit && postsCache && (now - postsCacheTimestamp) < POSTS_CACHE_DURATION) {
+      formattedPosts = postsCache;
+    } else {
+      let query = {};
+      if (subreddit) {
+        query.communityName = subreddit.toLowerCase();
+      }
+
+      const posts = await Post.find(query)
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean();
+
+      formattedPosts = posts.map(p => ({
+        ...p,
+        id: p._id,
+        voteCount: p.upvotes - p.downvotes,
+        timeAgo: getTimeAgo(p.createdAt),
+        subreddit: p.communityName,
+        author: p.authorUsername
+      }));
+
+      // Cache homepage posts only
+      if (!subreddit) {
+        postsCache = formattedPosts;
+        postsCacheTimestamp = now;
+      }
     }
 
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .limit(100);
-
-    const postsWithVotes = await addUserVoteInfo(posts, req.user?.id);
+    // Only fetch vote info if user is logged in
+    const postsWithVotes = req.user?.id 
+      ? await addUserVoteInfo(formattedPosts, req.user.id)
+      : formattedPosts;
 
     res.status(200).json(postsWithVotes);
   } catch (error) {
@@ -56,20 +102,72 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+// GET /api/posts/search - Search posts by query
+router.get('/search', optionalAuth, async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim().length < 2) {
+      return res.status(200).json([]);
+    }
+
+    const searchRegex = new RegExp(q.trim(), 'i');
+    
+    const posts = await Post.find({
+      $or: [
+        { title: searchRegex },
+        { content: searchRegex },
+        { authorUsername: searchRegex },
+        { communityName: searchRegex }
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .lean();
+
+    const formattedPosts = posts.map(p => ({
+      ...p,
+      id: p._id,
+      voteCount: p.upvotes - p.downvotes,
+      timeAgo: getTimeAgo(p.createdAt),
+      subreddit: p.communityName,
+      author: p.authorUsername
+    }));
+
+    const postsWithVotes = await addUserVoteInfo(formattedPosts, req.user?.id);
+
+    res.status(200).json(postsWithVotes);
+  } catch (error) {
+    console.error('Search posts error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /api/posts/user/saved - Get saved posts (protected)
 router.get('/user/saved', authenticateToken, async (req, res) => {
   try {
     const activity = await UserActivity.findOne({ user: req.user.id })
-      .populate('savedPosts');
+      .select('savedPosts')
+      .lean();
     
-    if (!activity) {
+    if (!activity || !activity.savedPosts?.length) {
       return res.status(200).json([]);
     }
 
     const posts = await Post.find({ _id: { $in: activity.savedPosts } })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const postsWithVotes = await addUserVoteInfo(posts, req.user.id);
+    const formattedPosts = posts.map(p => ({
+      ...p,
+      id: p._id,
+      voteCount: p.upvotes - p.downvotes,
+      timeAgo: getTimeAgo(p.createdAt),
+      subreddit: p.communityName,
+      author: p.authorUsername
+    }));
+
+    const postsWithVotes = await addUserVoteInfo(formattedPosts, req.user.id);
 
     res.status(200).json(postsWithVotes);
   } catch (error) {
@@ -78,16 +176,52 @@ router.get('/user/saved', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/posts/by-user/:username - Get posts by username
+router.get('/by-user/:username', optionalAuth, async (req, res) => {
+  try {
+    const posts = await Post.find({ authorUsername: req.params.username })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    const formattedPosts = posts.map(p => ({
+      ...p,
+      id: p._id,
+      voteCount: p.upvotes - p.downvotes,
+      timeAgo: getTimeAgo(p.createdAt),
+      subreddit: p.communityName,
+      author: p.authorUsername
+    }));
+
+    const postsWithVotes = await addUserVoteInfo(formattedPosts, req.user?.id);
+
+    res.status(200).json(postsWithVotes);
+  } catch (error) {
+    console.error('Get posts by user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /api/posts/:id - Get single post
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findById(req.params.id).lean();
     
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    const postsWithVotes = await addUserVoteInfo([post], req.user?.id);
+    // Format the lean document
+    const formattedPost = {
+      ...post,
+      id: post._id,
+      voteCount: post.upvotes - post.downvotes,
+      timeAgo: getTimeAgo(post.createdAt),
+      subreddit: post.communityName,
+      author: post.authorUsername
+    };
+
+    const postsWithVotes = await addUserVoteInfo([formattedPost], req.user?.id);
 
     res.status(200).json(postsWithVotes[0]);
   } catch (error) {
@@ -133,6 +267,9 @@ router.post(
         community: community._id,
         communityName: community.name
       });
+
+      // Invalidate posts cache when new post is created
+      invalidatePostsCache();
 
       res.status(201).json(newPost);
     } catch (error) {
@@ -188,6 +325,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     
     // Also delete associated votes
     await Vote.deleteMany({ target: req.params.id, targetType: 'post' });
+
+    // Invalidate posts cache when post is deleted
+    invalidatePostsCache();
 
     res.status(200).json({ message: 'Post deleted successfully' });
   } catch (error) {

@@ -6,17 +6,36 @@ const UserActivity = require('../models/UserActivity');
 
 const router = express.Router();
 
+// Simple in-memory cache for communities list
+let communitiesCache = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 60 * 1000; // 1 minute cache
+
+const invalidateCommunitiesCache = () => {
+  communitiesCache = null;
+  cacheTimestamp = 0;
+};
+
 // GET /api/communities/user/recent - Get recent communities (protected)
 router.get('/user/recent', authenticateToken, async (req, res) => {
   try {
     const activity = await UserActivity.findOne({ user: req.user.id })
-      .populate('recentCommunities');
+      .select('recentCommunities')
+      .populate({ path: 'recentCommunities', options: { lean: true } })
+      .lean();
     
-    if (!activity || !activity.recentCommunities.length) {
+    if (!activity || !activity.recentCommunities || !activity.recentCommunities.length) {
       return res.status(200).json([]);
     }
 
-    res.status(200).json(activity.recentCommunities);
+    // Format communities with id field
+    const formattedCommunities = activity.recentCommunities.map(c => ({
+      ...c,
+      id: c.name, // Use name as id for routing
+      displayName: c.displayName || `r/${c.name}`
+    }));
+
+    res.status(200).json(formattedCommunities);
   } catch (error) {
     console.error('Get recent communities error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -27,13 +46,22 @@ router.get('/user/recent', authenticateToken, async (req, res) => {
 router.get('/user/joined', authenticateToken, async (req, res) => {
   try {
     const activity = await UserActivity.findOne({ user: req.user.id })
-      .populate('joinedCommunities');
+      .select('joinedCommunities')
+      .populate({ path: 'joinedCommunities', options: { lean: true } })
+      .lean();
     
-    if (!activity || !activity.joinedCommunities.length) {
+    if (!activity || !activity.joinedCommunities || !activity.joinedCommunities.length) {
       return res.status(200).json([]);
     }
 
-    res.status(200).json(activity.joinedCommunities);
+    // Format communities with id field
+    const formattedCommunities = activity.joinedCommunities.map(c => ({
+      ...c,
+      id: c.name, // Use name as id for routing
+      displayName: c.displayName || `r/${c.name}`
+    }));
+
+    res.status(200).json(formattedCommunities);
   } catch (error) {
     console.error('Get joined communities error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -43,8 +71,21 @@ router.get('/user/joined', authenticateToken, async (req, res) => {
 // GET /api/communities - Get all communities
 router.get('/', async (req, res) => {
   try {
+    const now = Date.now();
+    
+    // Return cached data if available and not expired
+    if (communitiesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      return res.status(200).json(communitiesCache);
+    }
+    
     const communities = await Community.find()
-      .sort({ memberCount: -1 });
+      .sort({ memberCount: -1 })
+      .limit(100)
+      .lean(); // Use lean for faster read-only queries
+    
+    // Update cache
+    communitiesCache = communities;
+    cacheTimestamp = now;
     
     res.status(200).json(communities);
   } catch (error) {
@@ -58,40 +99,62 @@ router.get('/:id', async (req, res) => {
   try {
     const community = await Community.findOne({ 
       name: req.params.id.toLowerCase() 
-    });
+    }).lean();
     
     if (!community) {
       return res.status(404).json({ message: 'Community not found' });
     }
 
-    // Track visit if user is authenticated
+    // Format lean document
+    const formattedCommunity = {
+      ...community,
+      id: community.name,
+      members: community.memberCount >= 1000000 
+        ? `${(community.memberCount / 1000000).toFixed(1)}M`
+        : community.memberCount >= 1000 
+          ? `${(community.memberCount / 1000).toFixed(0)}k`
+          : String(community.memberCount),
+      online: String(Math.max(Math.floor(community.memberCount * 0.003), 1)),
+      created: new Date(community.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      creatorId: community.creator?.toString()
+    };
+
+    // Track visit if user is authenticated (non-blocking)
     const authHeader = req.headers['authorization'];
     if (authHeader) {
-      try {
-        const token = authHeader.split(' ')[1];
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
-        let activity = await UserActivity.findOne({ user: decoded.id });
-        if (!activity) {
-          activity = await UserActivity.create({ user: decoded.id });
+      // Run in background, don't wait for it
+      setImmediate(async () => {
+        try {
+          const token = authHeader.split(' ')[1];
+          const jwt = require('jsonwebtoken');
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          
+          await UserActivity.findOneAndUpdate(
+            { user: decoded.id },
+            { 
+              $pull: { recentCommunities: community._id },
+            }
+          );
+          await UserActivity.findOneAndUpdate(
+            { user: decoded.id },
+            { 
+              $push: { 
+                recentCommunities: { 
+                  $each: [community._id], 
+                  $position: 0, 
+                  $slice: 5 
+                } 
+              } 
+            },
+            { upsert: true }
+          );
+        } catch (err) {
+          // Ignore auth errors
         }
-        
-        // Update recent communities
-        activity.recentCommunities = activity.recentCommunities.filter(
-          c => c.toString() !== community._id.toString()
-        );
-        activity.recentCommunities.unshift(community._id);
-        if (activity.recentCommunities.length > 5) {
-          activity.recentCommunities = activity.recentCommunities.slice(0, 5);
-        }
-        await activity.save();
-      } catch (err) {
-        // Ignore auth errors
-      }
+      });
     }
 
-    res.status(200).json(community);
+    res.status(200).json(formattedCommunity);
   } catch (error) {
     console.error('Get community error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -141,6 +204,9 @@ router.post(
         creator: req.user.id,
         creatorUsername: req.user.username
       });
+
+      // Invalidate cache when new community is created
+      invalidateCommunitiesCache();
 
       // Auto-join creator to community
       let activity = await UserActivity.findOne({ user: req.user.id });
@@ -295,6 +361,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     
     // Delete the community
     await Community.findByIdAndDelete(community._id);
+    
+    // Invalidate cache when community is deleted
+    invalidateCommunitiesCache();
 
     res.status(200).json({ message: 'Community deleted successfully' });
   } catch (error) {

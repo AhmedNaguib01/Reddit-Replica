@@ -77,6 +77,42 @@ const buildCommentTree = (comments) => {
   return roots;
 };
 
+// Helper to build comment tree from lean documents (no toJSON method)
+const buildCommentTreeLean = (comments) => {
+  const commentMap = {};
+  const roots = [];
+  const { getTimeAgo } = require('../utils/helpers');
+
+  // Create map with formatted data
+  comments.forEach(comment => {
+    commentMap[comment._id.toString()] = {
+      ...comment,
+      id: comment._id,
+      voteCount: comment.upvotes - comment.downvotes,
+      timeAgo: getTimeAgo(comment.createdAt),
+      author: comment.authorUsername,
+      postId: comment.post,
+      parentId: comment.parentComment,
+      replies: []
+    };
+  });
+
+  // Build tree
+  comments.forEach(comment => {
+    const commentObj = commentMap[comment._id.toString()];
+    if (comment.parentComment) {
+      const parent = commentMap[comment.parentComment.toString()];
+      if (parent) {
+        parent.replies.push(commentObj);
+      }
+    } else {
+      roots.push(commentObj);
+    }
+  });
+
+  return roots;
+};
+
 // GET /api/comments - Get comments by post ID
 router.get('/', optionalAuth, async (req, res) => {
   try {
@@ -87,9 +123,10 @@ router.get('/', optionalAuth, async (req, res) => {
     }
 
     const comments = await Comment.find({ post: postId })
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: 1 })
+      .lean(); // Use lean for faster read-only queries
 
-    const tree = buildCommentTree(comments);
+    const tree = buildCommentTreeLean(comments);
     const treeWithVotes = await addUserVoteInfo(tree, req.user?.id);
 
     res.status(200).json(treeWithVotes);
@@ -104,9 +141,22 @@ router.get('/user/:username', async (req, res) => {
   try {
     const comments = await Comment.find({ authorUsername: req.params.username })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(50)
+      .lean();
 
-    res.status(200).json(comments);
+    // Format lean documents
+    const { getTimeAgo } = require('../utils/helpers');
+    const formattedComments = comments.map(c => ({
+      ...c,
+      id: c._id,
+      voteCount: c.upvotes - c.downvotes,
+      timeAgo: getTimeAgo(c.createdAt),
+      author: c.authorUsername,
+      postId: c.post,
+      parentId: c.parentComment
+    }));
+
+    res.status(200).json(formattedComments);
   } catch (error) {
     console.error('Get user comments error:', error);
     res.status(500).json({ message: 'Server error' });

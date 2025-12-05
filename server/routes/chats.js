@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 const { authenticateToken } = require('../middleware/auth');
 const Chat = require('../models/Chat');
@@ -9,8 +10,32 @@ const router = express.Router();
 // GET /api/chats - Get all chats for current user
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const chats = await Chat.find({ participants: req.user.id })
-      .sort({ updatedAt: -1 });
+    // Use aggregation to efficiently count unread messages without loading all of them
+    const chats = await Chat.aggregate([
+      { $match: { participants: new mongoose.Types.ObjectId(req.user.id) } },
+      { $sort: { updatedAt: -1 } },
+      {
+        $project: {
+          participantUsernames: 1,
+          lastMessage: 1,
+          updatedAt: 1,
+          unreadCount: {
+            $size: {
+              $filter: {
+                input: '$messages',
+                as: 'msg',
+                cond: {
+                  $and: [
+                    { $eq: ['$$msg.read', false] },
+                    { $ne: ['$$msg.senderUsername', req.user.username] }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
 
     // Format chats for response
     const formattedChats = chats.map(chat => {
@@ -20,9 +45,7 @@ router.get('/', authenticateToken, async (req, res) => {
         otherUser: otherUsername,
         lastMessage: chat.lastMessage,
         updatedAt: chat.updatedAt,
-        unreadCount: chat.messages.filter(m => 
-          !m.read && m.senderUsername !== req.user.username
-        ).length
+        unreadCount: chat.unreadCount
       };
     });
 
@@ -36,16 +59,19 @@ router.get('/', authenticateToken, async (req, res) => {
 // GET /api/chats/unread-count - Get total unread message count
 router.get('/unread-count', authenticateToken, async (req, res) => {
   try {
-    const chats = await Chat.find({ participants: req.user.id });
-    
-    let totalUnread = 0;
-    chats.forEach(chat => {
-      totalUnread += chat.messages.filter(m => 
-        !m.read && m.senderUsername !== req.user.username
-      ).length;
-    });
+    // Use aggregation pipeline for efficient counting without loading all messages
+    const result = await Chat.aggregate([
+      { $match: { participants: new mongoose.Types.ObjectId(req.user.id) } },
+      { $unwind: '$messages' },
+      { $match: { 
+        'messages.read': false,
+        'messages.senderUsername': { $ne: req.user.username }
+      }},
+      { $count: 'totalUnread' }
+    ]);
 
-    res.status(200).json({ count: totalUnread });
+    const count = result.length > 0 ? result[0].totalUnread : 0;
+    res.status(200).json({ count });
   } catch (error) {
     console.error('Get unread count error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -118,7 +144,7 @@ router.post(
 // GET /api/chats/:id - Get chat with messages
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const chat = await Chat.findById(req.params.id);
+    const chat = await Chat.findById(req.params.id).lean();
 
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });

@@ -9,9 +9,18 @@ router.get('/', authenticateToken, async (req, res) => {
   try {
     const notifications = await Notification.find({ user: req.user.id })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(50)
+      .lean();
 
-    res.status(200).json(notifications);
+    // Format lean documents
+    const { getTimeAgo } = require('../utils/helpers');
+    const formattedNotifications = notifications.map(n => ({
+      ...n,
+      id: n._id,
+      time: getTimeAgo(n.createdAt)
+    }));
+
+    res.status(200).json(formattedNotifications);
   } catch (error) {
     console.error('Get notifications error:', error);
     res.status(500).json({ message: 'Server error' });

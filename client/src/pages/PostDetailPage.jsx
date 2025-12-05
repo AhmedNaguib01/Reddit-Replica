@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { MessageSquare, Bookmark, Share2, MoreHorizontal, Edit, Trash2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { useLoading } from '../context/LoadingContext';
 import Sidebar from '../components/layout/Sidebar';
 import RightSidebar from '../components/layout/RightSidebar';
 import CommentList from '../components/comment/CommentList';
@@ -34,7 +33,6 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
   const [isMember, setIsMember] = useState(false);
   const optionsRef = useRef(null);
   const { showToast } = useToast();
-  const { startLoading, stopLoading } = useLoading();
   
   const isOwner = currentUser && post && currentUser.username === post.author;
   
@@ -52,38 +50,60 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchData = async () => {
       try {
         setLoading(true);
-        startLoading();
-        const [postData, commentsData] = await Promise.all([
+        
+        // Fetch post, comments, and membership in parallel for faster loading
+        const fetchPromises = [
           postsAPI.getById(postId),
           commentsAPI.getByPostId(postId)
-        ]);
+        ];
+        
+        // Only fetch joined communities if user is logged in
+        if (currentUser) {
+          fetchPromises.push(communitiesAPI.getJoinedCached().catch(() => []));
+        }
+        
+        const results = await Promise.all(fetchPromises);
+        const [postData, commentsData, joinedCommunities] = results;
+        
+        if (!isMounted) return;
+        
         setPost(postData);
         setComments(commentsData);
         
-        // Check if user is a member of the community
-        if (currentUser && postData.subreddit) {
-          try {
-            const joinedCommunities = await communitiesAPI.getJoined();
-            const memberOfCommunity = joinedCommunities.some(
-              c => c.name.toLowerCase() === postData.subreddit.toLowerCase()
-            );
-            setIsMember(memberOfCommunity);
-          } catch (err) {
-            console.error('Error checking membership:', err);
-          }
+        // Set saved state from post data
+        if (postData.saved !== undefined) {
+          setSaved(postData.saved);
+        } else if (postData.isSaved !== undefined) {
+          setSaved(postData.isSaved);
         }
+        
+        // Check membership from already-fetched data
+        if (currentUser && postData.subreddit && joinedCommunities) {
+          const memberOfCommunity = joinedCommunities.some(
+            c => c.name.toLowerCase() === postData.subreddit.toLowerCase()
+          );
+          setIsMember(memberOfCommunity);
+        }
+        
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-        stopLoading();
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [postId, currentUser]);
 
   const handleSavePost = async () => {
@@ -91,11 +111,19 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
       onAuthAction();
       return;
     }
+    
+    // Optimistic update - update UI immediately
+    const wasSaved = saved;
+    setSaved(!wasSaved);
+    showToast(!wasSaved ? 'Post saved!' : 'Post unsaved', 'success');
+    
     try {
       const result = await postsAPI.save(postId);
+      // Sync with server response (in case of mismatch)
       setSaved(result.saved);
-      showToast(result.saved ? 'Post saved!' : 'Post unsaved', 'success');
     } catch (error) {
+      // Revert on error
+      setSaved(wasSaved);
       console.error('Error saving post:', error);
       showToast('Failed to save post', 'error');
     }
@@ -250,7 +278,13 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
                 <div className="post-detail-content">
                   {post.type === 'image' && (
                     <div className="post-image-container">
-                      <img src={post.content} alt={post.title} />
+                      <img 
+                        src={post.content} 
+                        alt={post.title}
+                        loading="eager"
+                        decoding="async"
+                        fetchpriority="high"
+                      />
                     </div>
                   )}
                   {post.type === 'text' && (
