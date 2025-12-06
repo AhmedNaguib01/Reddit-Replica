@@ -16,12 +16,14 @@ A full-stack Reddit clone with communities, posts, comments, voting, real-time c
 - **Custom Feeds** - Create personalized feeds from multiple communities
 - **Search** - Search posts, communities, and users
 - **Dark/Light Mode** - Theme toggle with system preference detection
+- **AI Post Summary** - AI-powered post summarization using Google Gemini
 
 ## Tech Stack
 
 **Frontend:** React 19, React Router, Vite, Lucide React  
 **Backend:** Node.js, Express 5, MongoDB, Mongoose, JWT  
 **Auth:** Local + Google OAuth 2.0  
+**AI:** Google Gemini API  
 **Deployment:** Vercel (frontend), Railway (backend)
 
 ## Getting Started
@@ -47,7 +49,10 @@ JWT_SECRET=your_secret_key_here
 NODE_ENV=development
 GOOGLE_CLIENT_ID=your_google_client_id
 FRONTEND_URL=http://localhost:5173
+GEMINI_API_KEY=your_gemini_api_key
 ```
+
+> **Note:** Get your Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey). The AI Summary feature is optional - if not configured, the feature will be disabled.
 
 Start the server:
 ```bash
