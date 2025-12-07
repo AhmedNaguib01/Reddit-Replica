@@ -184,7 +184,8 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
               </div>
               
               <div className="profile-details">
-                <h1 className="profile-username">u/{user.username}</h1>
+                <h1 className="profile-display-name">{user.displayName || user.username}</h1>
+                <p className="profile-username">u/{user.username}</p>
                 <div className="profile-meta">
                   <span className="profile-meta-item">
                     <Cake size={16} />

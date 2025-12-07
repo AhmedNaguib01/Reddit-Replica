@@ -116,9 +116,10 @@ router.post('/google', async (req, res) => {
         user = existingEmailUser;
       } else {
         // Create new user with Google account
-        // Generate a unique username from email or name
+        // Generate a unique username from email or name (lowercase)
         let baseUsername = (name || email.split('@')[0])
-          .replace(/[^a-zA-Z0-9_]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '')
           .substring(0, 15);
         
         let username = baseUsername;
@@ -138,6 +139,7 @@ router.post('/google', async (req, res) => {
         user = await User.create({
           email: email.toLowerCase(),
           username,
+          displayName: name || username, // Use Google name as display name, fallback to username
           googleId,
           authProvider: 'google',
           avatar: picture || undefined,

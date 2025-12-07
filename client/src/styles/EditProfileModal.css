@@ -147,6 +147,13 @@
   margin-top: 4px;
 }
 
+.field-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
 .banner-presets {
   display: flex;
   gap: 8px;

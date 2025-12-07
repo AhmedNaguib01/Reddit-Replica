@@ -14,7 +14,7 @@ const router = express.Router();
 // Helper to escape regex special characters
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// GET /api/users/search - Search users by username
+// GET /api/users/search - Search users by username or displayName
 router.get('/search', async (req, res) => {
   try {
     const { q } = req.query;
@@ -23,8 +23,12 @@ router.get('/search', async (req, res) => {
       return res.status(200).json([]);
     }
 
+    const searchRegex = { $regex: escapeRegex(q.trim()), $options: 'i' };
     const users = await User.find({
-      username: { $regex: escapeRegex(q.trim()), $options: 'i' }
+      $or: [
+        { username: searchRegex },
+        { displayName: searchRegex }
+      ]
     })
     .select('-password -passwordResetToken -passwordResetExpires')
     .limit(10)
@@ -79,10 +83,10 @@ router.put('/change-password', authenticateToken, async (req, res) => {
 // PUT /api/users/profile - Update own profile (protected) - MUST BE BEFORE /:username
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { username, bio, bannerColor, bannerUrl, avatar } = req.body;
+    const { username, displayName, bio, bannerColor, bannerUrl, avatar } = req.body;
 
     if (username) {
-      const trimmedUsername = username.trim();
+      const trimmedUsername = username.trim().toLowerCase();
       if (trimmedUsername.length < 3) {
         return res.status(400).json({ message: 'Username must be at least 3 characters' });
       }
@@ -94,6 +98,13 @@ router.put('/profile', authenticateToken, async (req, res) => {
       }
     }
 
+    if (displayName !== undefined) {
+      const trimmedDisplayName = displayName.trim();
+      if (trimmedDisplayName.length > 30) {
+        return res.status(400).json({ message: 'Display name must be at most 30 characters' });
+      }
+    }
+
     // First get the user to check current values
     const existingUser = await User.findById(req.user.id);
     if (!existingUser) {
@@ -101,7 +112,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
     }
 
     const oldUsername = existingUser.username;
-    const newUsername = username ? username.trim() : oldUsername;
+    const newUsername = username ? username.trim().toLowerCase() : oldUsername;
 
     // Check if username is taken (only if changing)
     if (username && newUsername.toLowerCase() !== oldUsername.toLowerCase()) {
@@ -142,6 +153,11 @@ router.put('/profile', authenticateToken, async (req, res) => {
     const updateFields = {};
     if (username && newUsername !== oldUsername) {
       updateFields.username = newUsername;
+    }
+    if (displayName !== undefined) {
+      const trimmedDisplayName = displayName.trim();
+      // If displayName is empty, default to username
+      updateFields.displayName = trimmedDisplayName || newUsername;
     }
     if (bio !== undefined) updateFields.bio = bio.trim();
     if (bannerColor !== undefined) updateFields.bannerColor = bannerColor;

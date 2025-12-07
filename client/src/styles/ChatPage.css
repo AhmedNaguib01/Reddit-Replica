@@ -413,13 +413,24 @@
   font-size: 14px;
 }
 
-.chat-search-username {
+.chat-search-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-search-displayname {
   font-weight: 500;
   color: var(--color-text);
 }
 
-.dark-mode .chat-search-username {
+.dark-mode .chat-search-displayname {
   color: #fff;
+}
+
+.chat-search-username {
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 
 /* Fix header name color */

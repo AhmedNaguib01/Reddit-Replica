@@ -7,8 +7,17 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     trim: true,
+    lowercase: true,
     minlength: 3,
     maxlength: 20
+  },
+  displayName: {
+    type: String,
+    trim: true,
+    maxlength: 30,
+    default: function() {
+      return this.username;
+    }
   },
   email: {
     type: String,
@@ -109,5 +118,6 @@ userSchema.methods.toJSON = function() {
 // Indexes for faster queries
 // Note: username and email already have indexes from unique: true
 userSchema.index({ createdAt: -1 }); // For sorting by newest
+userSchema.index({ displayName: 'text' }); // For searching by display name
 
 module.exports = mongoose.model('User', userSchema);

@@ -35,11 +35,18 @@
   margin-bottom: 16px;
 }
 
-.profile-username {
+.profile-display-name {
   font-size: 28px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   color: var(--color-text-primary);
+}
+
+.profile-username {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--color-text-secondary);
 }
 
 .profile-meta {
@@ -378,8 +385,12 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .profile-username {
+  .profile-display-name {
     font-size: 22px;
+  }
+
+  .profile-username {
+    font-size: 13px;
   }
 
   .profile-meta {

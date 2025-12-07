@@ -6,7 +6,7 @@
   border-right: 1px solid var(--color-border);
   position: sticky; 
   top: 56px; 
-  overflow-y: auto; 
+  overflow: visible;
   padding: 8px 0; 
   box-sizing: border-box;
   transition: all var(--transition-normal);
@@ -19,6 +19,8 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-container.collapsed {
@@ -29,10 +31,10 @@
 
 .sidebar-toggle-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
+  top: 12px;
+  right: -18px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
@@ -50,24 +52,24 @@
   position: relative;
   top: auto;
   right: auto;
-  margin: 8px auto 16px;
+  margin: 12px auto 16px;
 }
 
 .sidebar-toggle-btn:hover {
   background-color: var(--color-bg-secondary);
   color: var(--color-text-primary);
-  transform: scale(1.1);
+  border-color: var(--color-text-secondary);
 }
 
 /* Hide scrollbar for Chrome/Safari/Opera but keep functionality */
-.sidebar-container::-webkit-scrollbar {
+.sidebar-nav::-webkit-scrollbar {
   width: 6px;
 }
-.sidebar-container::-webkit-scrollbar-thumb {
+.sidebar-nav::-webkit-scrollbar-thumb {
   background-color: #edeff1;
   border-radius: 4px;
 }
-.sidebar-container:hover::-webkit-scrollbar-thumb {
+.sidebar-nav:hover::-webkit-scrollbar-thumb {
   background-color: #ccc;
 }
 

@@ -107,7 +107,8 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
                   <Link to={`/user/${user.username}`} key={user._id || user.username} className="community-result">
                     <img src={user.avatar} alt={user.username} className="community-result-icon" />
                     <div className="community-result-info">
-                      <h3>u/{user.username}</h3>
+                      <h3>{user.displayName || user.username}</h3>
+                      <p className="user-search-username">u/{user.username}</p>
                       <p>{user.bio || 'No bio'}</p>
                       <span className="community-members">{user.karma} karma</span>
                     </div>

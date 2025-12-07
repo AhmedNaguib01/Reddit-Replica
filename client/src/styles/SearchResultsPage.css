@@ -96,6 +96,12 @@
   color: var(--color-text-meta);
 }
 
+.user-search-username {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 2px !important;
+}
+
 /* Users Results */
 .users-results {
   display: flex;

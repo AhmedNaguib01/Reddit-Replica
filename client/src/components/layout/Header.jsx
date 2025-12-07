@@ -211,8 +211,8 @@ const SearchBar = () => {
                     >
                       <img src={user.avatar} alt="" className="suggestion-icon" />
                       <div className="suggestion-info">
-                        <div className="suggestion-name">u/{user.username}</div>
-                        <div className="suggestion-meta">{user.karma} karma</div>
+                        <div className="suggestion-name">{user.displayName || user.username}</div>
+                        <div className="suggestion-meta">u/{user.username} · {user.karma} karma</div>
                       </div>
                     </Link>
                   ))}

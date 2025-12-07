@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
-  Home, TrendingUp, Compass, ChevronRight, ChevronLeft, 
-  Clock, Plus, Settings, HelpCircle, Briefcase, FileText, Users, ChevronDown, ChevronUp, LayoutGrid, Star
+  Home, TrendingUp, Compass, Menu,
+  Clock, Plus, Settings, HelpCircle, Briefcase, FileText, Users, ChevronDown, ChevronUp, LayoutGrid, Star, BookOpen
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -47,7 +47,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
         onClick={onToggle}
         aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        <Menu size={20} />
       </button>
 
       <nav className="sidebar-nav">
@@ -103,31 +103,6 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
           </>
         )}
 
-        {/* Communities Section - Only show if user is logged in */}
-        {!isCollapsed && currentUser && (
-          <>
-            <div className="sidebar-section">
-              <h3 className="sidebar-title">COMMUNITIES</h3>
-              
-              {/* Manage Communities - Only for logged in users */}
-              <Link to="/manage-communities" className="sidebar-link">
-                <Settings size={18} className="sidebar-icon" />
-                <span className="sidebar-text">Manage Communities</span>
-                {joinedCommunities.length > 0 && (
-                  <span className="sidebar-badge">{joinedCommunities.length}</span>
-                )}
-              </Link>
-              
-              {/* All Communities Link */}
-              <Link to="/communities" className="sidebar-link">
-                <Users size={18} className="sidebar-icon" />
-                <span className="sidebar-text">Communities</span>
-              </Link>
-            </div>
-            <hr className="sidebar-divider" />
-          </>
-        )}
-
         {/* Custom Feeds Section - Only show if user is logged in */}
         {!isCollapsed && currentUser && (
           <>
@@ -175,6 +150,25 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
           </>
         )}
 
+        {/* Communities Section - Only show if user is logged in */}
+        {!isCollapsed && currentUser && (
+          <>
+            <div className="sidebar-section">
+              <h3 className="sidebar-title">COMMUNITIES</h3>
+              
+              {/* Manage Communities - Only for logged in users */}
+              <Link to="/manage-communities" className="sidebar-link">
+                <Settings size={18} className="sidebar-icon" />
+                <span className="sidebar-text">Manage Communities</span>
+                {joinedCommunities.length > 0 && (
+                  <span className="sidebar-badge">{joinedCommunities.length}</span>
+                )}
+              </Link>
+            </div>
+            <hr className="sidebar-divider" />
+          </>
+        )}
+
         {/* Resources Section */}
         {!isCollapsed && (
           <>
@@ -195,6 +189,40 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
               <Link to="/careers" className="sidebar-link">
                 <Briefcase size={18} className="sidebar-icon" />
                 <span className="sidebar-text">Careers</span>
+              </Link>
+            </div>
+            <hr className="sidebar-divider" />
+          </>
+        )}
+
+        {/* All Communities Section */}
+        {!isCollapsed && (
+          <>
+            <div className="sidebar-section">
+              <Link to="/communities" className="sidebar-link">
+                <Users size={18} className="sidebar-icon" />
+                <span className="sidebar-text">Communities</span>
+              </Link>
+            </div>
+            <hr className="sidebar-divider" />
+          </>
+        )}
+
+        {/* Policies Section */}
+        {!isCollapsed && (
+          <>
+            <div className="sidebar-section">
+              <Link to="/rules" className="sidebar-link">
+                <BookOpen size={18} className="sidebar-icon" />
+                <span className="sidebar-text">Reddit Rules</span>
+              </Link>
+              <Link to="/privacy" className="sidebar-link">
+                <BookOpen size={18} className="sidebar-icon" />
+                <span className="sidebar-text">Privacy Policy</span>
+              </Link>
+              <Link to="/user-agreement" className="sidebar-link">
+                <BookOpen size={18} className="sidebar-icon" />
+                <span className="sidebar-text">User Agreement</span>
               </Link>
             </div>
             <hr className="sidebar-divider" />

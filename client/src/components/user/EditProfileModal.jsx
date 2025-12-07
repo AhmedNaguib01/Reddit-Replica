@@ -49,6 +49,7 @@ const compressImage = (file, maxWidth, maxHeight, quality = 0.8) => {
 
 const EditProfileModal = ({ isOpen, onClose, user, onProfileUpdated }) => {
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState('');
   const [avatarMode, setAvatarMode] = useState('current');
@@ -64,6 +65,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onProfileUpdated }) => {
   useEffect(() => {
     if (isOpen && user) {
       setUsername(user.username || '');
+      setDisplayName(user.displayName || user.username || '');
       setBio(user.bio || '');
       setAvatar(user.avatar || '');
       setAvatarMode('current');
@@ -111,6 +113,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onProfileUpdated }) => {
   // Handle cancel - reset form and close
   const handleCancel = () => {
     setUsername('');
+    setDisplayName('');
     setBio('');
     setAvatar('');
     setAvatarMode('current');
@@ -147,7 +150,8 @@ const EditProfileModal = ({ isOpen, onClose, user, onProfileUpdated }) => {
       
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const requestBody = {
-        username: username.trim(),
+        username: username.trim().toLowerCase(),
+        displayName: displayName.trim() || username.trim().toLowerCase(),
         bio: bio.trim(),
         bannerColor: bannerMode === 'color' ? bannerColor : '',
         bannerUrl: bannerMode !== 'color' ? bannerUrl : '',
@@ -291,6 +295,20 @@ const EditProfileModal = ({ isOpen, onClose, user, onProfileUpdated }) => {
               maxLength={20}
               disabled={loading}
             />
+            <span className="field-hint">Permanent identifier (lowercase only)</span>
+          </div>
+
+          <div className="form-group">
+            <label>Display Name</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="How your name appears to others"
+              maxLength={30}
+              disabled={loading}
+            />
+            <span className="char-count">{displayName.length}/30</span>
           </div>
 
           <div className="form-group">

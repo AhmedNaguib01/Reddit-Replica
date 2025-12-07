@@ -387,10 +387,13 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
                       <img src={user.avatar} alt={user.username} className="chat-avatar-small" />
                     ) : (
                       <div className="chat-avatar-small chat-avatar-placeholder">
-                        {user.username.charAt(0).toUpperCase()}
+                        {(user.displayName || user.username).charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="chat-search-username">{user.username}</span>
+                    <div className="chat-search-user-info">
+                      <span className="chat-search-displayname">{user.displayName || user.username}</span>
+                      <span className="chat-search-username">u/{user.username}</span>
+                    </div>
                   </button>
                 ))}
               </div>
