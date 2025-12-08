@@ -38,16 +38,24 @@ const AboutPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
       
       <h2>Features</h2>
       <ul>
-        <li>User authentication (register/login)</li>
+        <li>User authentication (register/login with email or Google OAuth)</li>
+        <li>Display names (customizable) and usernames (permanent, lowercase)</li>
         <li>Create and join communities</li>
         <li>Create posts (text & images)</li>
         <li>Upvote/downvote system</li>
-        <li>Nested comments</li>
-        <li>User profiles with karma</li>
+        <li>Nested comments with replies</li>
+        <li>User profiles with karma and customizable banners</li>
         <li>Follow users</li>
-        <li>Custom feeds</li>
+        <li>Custom feeds with favorites</li>
         <li>Real-time notifications</li>
-        <li>Dark mode</li>
+        <li>Real-time chat/messaging between users</li>
+        <li>AI-powered post summarization (Google Gemini)</li>
+        <li>Search users by username or display name</li>
+        <li>Search posts and communities</li>
+        <li>Password reset via email</li>
+        <li>Dark/Light mode toggle</li>
+        <li>Responsive design (mobile-friendly)</li>
+        <li>Collapsible sidebar navigation</li>
       </ul>
     </StaticPage>
   );
