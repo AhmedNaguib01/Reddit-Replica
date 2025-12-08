@@ -36,7 +36,7 @@
 .logo-text {
   font-size: 26px;
   font-weight: bold;
-  color: white;
+  color: var(--color-text-primary);
   letter-spacing: -1px;
   transition: color var(--transition-fast);
 }
