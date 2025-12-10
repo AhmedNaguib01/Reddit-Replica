@@ -1,0 +1,189 @@
+@startuml Reddit Clone Database Schema
+
+!define PRIMARY_KEY(x) <b><color:#b8860b>x</color></b>
+!define FOREIGN_KEY(x) <color:#666666>x</color>
+!define COLUMN(x) <color:#333333>x</color>
+
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor #ffffff
+  BorderColor #cccccc
+  ArrowColor #666666
+  FontColor #333333
+  AttributeFontColor #333333
+  StereotypeFontColor #888888
+}
+skinparam backgroundColor #ffffff
+
+' ==================== CORE ENTITIES ====================
+together {
+  entity "users" as users {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    username : String <<unique, lowercase>>
+    displayName : String
+    email : String <<unique>>
+    password : String <<hashed>>
+    googleId : String
+    authProvider : String
+    avatar : String
+    bio : String
+    bannerColor : String
+    bannerUrl : String
+    karma : Number
+    cakeDay : Date
+    createdAt : Date
+    updatedAt : Date
+  }
+
+  entity "communities" as communities {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    name : String <<unique, lowercase>>
+    displayName : String
+    title : String
+    description : String
+    iconUrl : String
+    bannerUrl : String
+    FOREIGN_KEY(creator) : ObjectId
+    creatorUsername : String
+    memberCount : Number
+    category : String
+    rules : String[]
+    createdAt : Date
+    updatedAt : Date
+  }
+}
+
+' ==================== CONTENT ====================
+together {
+  entity "posts" as posts {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    title : String
+    type : String <<text|image|link>>
+    content : String
+    FOREIGN_KEY(author) : ObjectId
+    authorUsername : String
+    FOREIGN_KEY(community) : ObjectId
+    communityName : String
+    upvotes : Number
+    downvotes : Number
+    commentCount : Number
+    isEdited : Boolean
+    editedAt : Date
+    createdAt : Date
+    updatedAt : Date
+  }
+
+  entity "comments" as comments {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    content : String
+    FOREIGN_KEY(post) : ObjectId
+    FOREIGN_KEY(author) : ObjectId
+    authorUsername : String
+    FOREIGN_KEY(parentComment) : ObjectId
+    depth : Number
+    upvotes : Number
+    downvotes : Number
+    isEdited : Boolean
+    editedAt : Date
+    createdAt : Date
+    updatedAt : Date
+  }
+}
+
+' ==================== INTERACTIONS ====================
+together {
+  entity "votes" as votes {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    FOREIGN_KEY(user) : ObjectId
+    targetType : String <<post|comment>>
+    FOREIGN_KEY(target) : ObjectId
+    voteType : Number <<1|-1>>
+    createdAt : Date
+    updatedAt : Date
+  }
+
+  entity "user_activities" as user_activities {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    FOREIGN_KEY(user) : ObjectId <<unique>>
+    savedPosts : ObjectId[]
+    joinedCommunities : ObjectId[]
+    recentCommunities : ObjectId[]
+    following : ObjectId[]
+    followers : ObjectId[]
+    createdAt : Date
+    updatedAt : Date
+  }
+
+  entity "notifications" as notifications {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    FOREIGN_KEY(user) : ObjectId
+    type : String
+    message : String
+    link : String
+    FOREIGN_KEY(fromUser) : ObjectId
+    fromUsername : String
+    FOREIGN_KEY(relatedPost) : ObjectId
+    FOREIGN_KEY(relatedComment) : ObjectId
+    read : Boolean
+    createdAt : Date
+    updatedAt : Date
+  }
+}
+
+' ==================== MESSAGING ====================
+together {
+  entity "chats" as chats {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    participants : ObjectId[]
+    participantUsernames : String[]
+    messages : Message[]
+    lastMessage : Object
+    createdAt : Date
+    updatedAt : Date
+  }
+
+  entity "custom_feeds" as custom_feeds {
+    PRIMARY_KEY(_id) : ObjectId
+    --
+    name : String
+    description : String
+    FOREIGN_KEY(creator) : ObjectId
+    creatorUsername : String
+    communities : ObjectId[]
+    isPrivate : Boolean
+    showOnProfile : Boolean
+    isFavorite : Boolean
+    iconColor : String
+    createdAt : Date
+    updatedAt : Date
+  }
+}
+
+' ==================== RELATIONSHIPS ====================
+users ||--o{ posts : "creates"
+users ||--o{ comments : "writes"
+users ||--o{ votes : "casts"
+users ||--|| user_activities : "has"
+users ||--o{ notifications : "receives"
+users ||--o{ custom_feeds : "creates"
+users ||--o{ communities : "creates"
+
+communities ||--o{ posts : "contains"
+
+posts ||--o{ comments : "has"
+
+comments ||--o{ comments : "replies to"
+
+notifications }o--|| users : "from"
+notifications }o--o| posts : "about"
+notifications }o--o| comments : "about"
+
+@enduml
