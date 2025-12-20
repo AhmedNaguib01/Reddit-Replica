@@ -237,13 +237,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
                       }
                       try {
                         const result = await chatsAPI.create(username);
-                        navigate('/chat', { 
-                          state: { 
-                            chatId: result.id, 
-                            otherUser: result.otherUser,
-                            otherUserAvatar: result.otherUserAvatar 
-                          } 
-                        });
+                        navigate('/chat', { state: { chatId: result.id, otherUser: result.otherUser } });
                       } catch (error) {
                         showToast(error.message, 'error');
                       }
