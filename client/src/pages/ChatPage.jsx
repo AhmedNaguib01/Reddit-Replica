@@ -266,10 +266,28 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
     e.preventDefault();
     if (msg.deleted || String(msg._id).startsWith('temp-')) return;
     
+    // Menu dimensions (approximate)
+    const menuWidth = 150;
+    const menuHeight = 100;
+    
+    // Calculate position to keep menu within viewport
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // Adjust if menu would overflow right edge
+    if (x + menuWidth > window.innerWidth) {
+      x = window.innerWidth - menuWidth - 10;
+    }
+    
+    // Adjust if menu would overflow bottom edge
+    if (y + menuHeight > window.innerHeight) {
+      y = window.innerHeight - menuHeight - 10;
+    }
+    
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x,
+      y,
       message: msg
     });
   };
