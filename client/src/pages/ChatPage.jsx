@@ -50,7 +50,7 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
         
         // If navigated from profile with chat info, select that chat (only on initial load)
         if (isInitial && location.state?.chatId) {
-          // Try to find the chat in fetched data to get the avatar
+          // Try to find the chat in the fetched data to get the avatar
           const existingChat = data.find(c => c.id === location.state.chatId);
           const chatFromState = {
             id: location.state.chatId,
@@ -64,7 +64,7 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
           window.history.replaceState({}, document.title);
         }
         
-        // Update selectedChat with latest avatar data if it exists in the fetched chats
+        // Update selected chat's avatar if it changed (e.g., user updated their profile)
         setSelectedChat(prev => {
           if (!prev) return prev;
           const updatedChat = data.find(c => c.id === prev.id);
