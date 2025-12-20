@@ -102,6 +102,9 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+// Helper to escape regex special characters
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // GET /api/posts/search - Search posts by query
 router.get('/search', optionalAuth, async (req, res) => {
   try {
@@ -111,7 +114,10 @@ router.get('/search', optionalAuth, async (req, res) => {
       return res.status(200).json([]);
     }
 
-    const searchRegex = new RegExp(q.trim(), 'i');
+    // Escape special regex characters and use word boundary for better matching
+    const escapedQuery = escapeRegex(q.trim());
+    // Use word boundary \b to match whole words, preventing "cat" from matching "education"
+    const searchRegex = new RegExp(`\\b${escapedQuery}\\b`, 'i');
     
     const posts = await Post.find({
       $or: [
