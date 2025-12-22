@@ -6,7 +6,7 @@ import Sidebar from '../components/layout/Sidebar';
 import { UserProfileSkeleton, PostListSkeleton } from '../components/common/LoadingSkeleton';
 import EditProfileModal from '../components/user/EditProfileModal';
 import ChangePasswordModal from '../components/user/ChangePasswordModal';
-import { postsAPI, usersAPI, commentsAPI, customFeedsAPI, chatsAPI } from '../services/api';
+import { postsAPI, usersAPI, chatsAPI } from '../services/api';
 import { MessageSquare, Cake, Award, Bookmark, Settings, LayoutGrid, MessageCircle, ChevronDown, Lock } from 'lucide-react';
 import usePageTitle from '../hooks/usePageTitle';
 import '../styles/UserProfilePage.css';
@@ -51,41 +51,21 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
       try {
         setLoading(true);
         
-        // Fetch essential data first (user profile)
-        const userData = await usersAPI.getByUsername(username);
-        setUser(userData);
+        // Fetch all profile data in a single optimized request
+        const profileData = await usersAPI.getFullProfile(username);
         
-        // Fetch remaining data in parallel
-        const [userPostsData, userCommentsData, followersData, followingData] = await Promise.all([
-          postsAPI.getByUser(username), // Use optimized endpoint instead of getAll
-          commentsAPI.getByUser(username),
-          usersAPI.getFollowers(username),
-          usersAPI.getFollowing(username)
-        ]);
+        setUser(profileData.user);
+        setUserPosts(profileData.posts);
+        setUserComments(profileData.comments);
+        setFollowers(profileData.followers);
+        setFollowingList(profileData.following);
+        setCustomFeeds(profileData.customFeeds);
+        setFollowing(profileData.isFollowing);
         
-        setUserPosts(userPostsData);
-        setUserComments(userCommentsData);
-        setFollowers(followersData);
-        setFollowingList(followingData);
-        
-        // Check if current user is following this user (only if logged in and not own profile)
-        if (currentUser && currentUser.username !== username) {
-          usersAPI.isFollowing(username)
-            .then(result => setFollowing(result.following))
-            .catch(err => console.error('Error checking follow status:', err));
+        // Set saved posts if viewing own profile
+        if (profileData.savedPosts) {
+          setSavedPosts(profileData.savedPosts);
         }
-        
-        // Fetch saved posts if viewing own profile (non-blocking)
-        if (currentUser && currentUser.username === username) {
-          postsAPI.getSaved()
-            .then(saved => setSavedPosts(saved))
-            .catch(err => console.error('Error fetching saved posts:', err));
-        }
-
-        // Fetch custom feeds (non-blocking)
-        customFeedsAPI.getByUsername(username)
-          .then(feeds => setCustomFeeds(feeds))
-          .catch(err => console.error('Error fetching custom feeds:', err));
           
       } catch (error) {
         console.error('Error fetching user data:', error);

@@ -216,7 +216,8 @@ export const communitiesAPI = {
 
 // Users API
 export const usersAPI = {
-  getByUsername: (username) => apiRequest(`/users/${username}`),
+  // Get complete user profile data in a single request (optimized)
+  getFullProfile: (username) => apiRequest(`/users/${username}/profile`),
   
   search: (query) => apiRequest(`/users/search?q=${encodeURIComponent(query)}`),
   
@@ -225,10 +226,6 @@ export const usersAPI = {
   }),
   
   getFollowers: (username) => apiRequest(`/users/${username}/followers`),
-  
-  getFollowing: (username) => apiRequest(`/users/${username}/following`),
-  
-  isFollowing: (username) => apiRequest(`/users/${username}/is-following`),
 };
 
 // Notifications API

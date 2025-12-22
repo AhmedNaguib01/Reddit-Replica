@@ -1,13 +1,16 @@
 const express = require('express');
-const { authenticateToken, clearUserCache } = require('../middleware/auth');
+const { authenticateToken, optionalAuth, clearUserCache } = require('../middleware/auth');
 const User = require('../models/User');
 const UserActivity = require('../models/UserActivity');
 const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const Community = require('../models/Community');
+const CustomFeed = require('../models/CustomFeed');
+const Vote = require('../models/Vote');
 const Notification = require('../models/Notification');
 const Chat = require('../models/Chat');
 const { notifyFollow } = require('../utils/notifications');
+const { getTimeAgo } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -181,37 +184,157 @@ router.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/users/:username - Get user profile
-router.get('/:username', async (req, res) => {
+// GET /api/users/:username/profile - Get complete user profile data in one request (optimized)
+router.get('/:username/profile', optionalAuth, async (req, res) => {
   try {
-    // Use case-insensitive exact match with lean for performance
-    const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
-    })
-    .select('-password -passwordResetToken -passwordResetExpires')
-    .lean();
+    const usernameRegex = new RegExp(`^${escapeRegex(req.params.username)}$`, 'i');
+    
+    // Fetch user first to get the ID
+    const user = await User.findOne({ username: usernameRegex })
+      .select('-password -passwordResetToken -passwordResetExpires')
+      .lean();
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Get follower/following counts - only select what we need
-    const activity = await UserActivity.findOne({ user: user._id })
-      .select('followers following')
-      .lean();
-    
-    // Format response
-    const userData = {
-      ...user,
-      id: user._id,
-      cakeDay: new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      followerCount: activity?.followers?.length || 0,
-      followingCount: activity?.following?.length || 0
+    const userId = user._id;
+    const isOwnProfile = req.user && req.user.id === userId.toString();
+
+    // Fetch all data in parallel for maximum performance
+    const [activity, posts, comments, customFeeds, currentUserActivity] = await Promise.all([
+      // User's activity (followers, following, saved posts)
+      UserActivity.findOne({ user: userId })
+        .populate('followers', 'username displayName avatar')
+        .populate('following', 'username displayName avatar')
+        .lean(),
+      
+      // User's posts
+      Post.find({ author: userId })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean(),
+      
+      // User's comments
+      Comment.find({ author: userId })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean(),
+      
+      // User's public custom feeds
+      CustomFeed.find({ 
+        creator: userId,
+        isPrivate: false,
+        showOnProfile: true
+      })
+        .populate('communities', 'name iconUrl')
+        .sort({ name: 1 })
+        .lean(),
+      
+      // Current user's activity (for follow status and votes) - only if logged in and not own profile
+      req.user && !isOwnProfile
+        ? UserActivity.findOne({ user: req.user.id }).select('following').lean()
+        : null
+    ]);
+
+    // Format posts
+    const formattedPosts = posts.map(p => ({
+      ...p,
+      id: p._id,
+      voteCount: p.upvotes - p.downvotes,
+      timeAgo: getTimeAgo(p.createdAt),
+      subreddit: p.communityName,
+      author: p.authorUsername
+    }));
+
+    // Add vote info to posts if user is logged in
+    let postsWithVotes = formattedPosts;
+    if (req.user) {
+      const postIds = posts.map(p => p._id);
+      const [votes, savedActivity] = await Promise.all([
+        Vote.find({
+          user: req.user.id,
+          target: { $in: postIds },
+          targetType: 'post'
+        }).select('target voteType').lean(),
+        isOwnProfile ? UserActivity.findOne({ user: req.user.id }).select('savedPosts').lean() : null
+      ]);
+
+      const voteMap = {};
+      votes.forEach(v => {
+        voteMap[v.target.toString()] = v.voteType === 1 ? 'up' : 'down';
+      });
+
+      const savedPostIds = new Set(savedActivity?.savedPosts?.map(id => id.toString()) || []);
+
+      postsWithVotes = formattedPosts.map(p => ({
+        ...p,
+        userVote: voteMap[p._id.toString()] || null,
+        saved: savedPostIds.has(p._id.toString())
+      }));
+    }
+
+    // Format comments
+    const formattedComments = comments.map(c => ({
+      ...c,
+      id: c._id,
+      voteCount: c.upvotes - c.downvotes,
+      timeAgo: getTimeAgo(c.createdAt),
+      author: c.authorUsername,
+      postId: c.post,
+      parentId: c.parentComment
+    }));
+
+    // Format custom feeds
+    const formattedFeeds = customFeeds.map(f => ({
+      ...f,
+      id: f._id,
+      communityCount: f.communities?.length || 0
+    }));
+
+    // Check if current user is following this user
+    const isFollowing = currentUserActivity?.following?.some(
+      id => id.toString() === userId.toString()
+    ) || false;
+
+    // Get saved posts if viewing own profile
+    let savedPosts = [];
+    if (isOwnProfile && activity?.savedPosts?.length) {
+      const savedPostDocs = await Post.find({ _id: { $in: activity.savedPosts } })
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      savedPosts = savedPostDocs.map(p => ({
+        ...p,
+        id: p._id,
+        voteCount: p.upvotes - p.downvotes,
+        timeAgo: getTimeAgo(p.createdAt),
+        subreddit: p.communityName,
+        author: p.authorUsername
+      }));
+    }
+
+    // Build response
+    const response = {
+      user: {
+        ...user,
+        id: user._id,
+        cakeDay: new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        followerCount: activity?.followers?.length || 0,
+        followingCount: activity?.following?.length || 0
+      },
+      posts: postsWithVotes,
+      comments: formattedComments,
+      followers: activity?.followers || [],
+      following: activity?.following || [],
+      customFeeds: formattedFeeds,
+      isFollowing,
+      savedPosts: isOwnProfile ? savedPosts : []
     };
 
-    res.status(200).json(userData);
+    res.status(200).json(response);
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('Get user profile error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -299,53 +422,6 @@ router.get('/:username/followers', async (req, res) => {
     res.status(200).json(activity?.followers || []);
   } catch (error) {
     console.error('Get followers error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// GET /api/users/:username/following - Get users that this user follows
-router.get('/:username/following', async (req, res) => {
-  try {
-    const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
-    }).select('_id').lean();
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const activity = await UserActivity.findOne({ user: user._id })
-      .select('following')
-      .populate('following', '-password -passwordResetToken -passwordResetExpires')
-      .lean();
-    
-    res.status(200).json(activity?.following || []);
-  } catch (error) {
-    console.error('Get following error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// GET /api/users/:username/is-following - Check if current user follows this user (protected)
-router.get('/:username/is-following', authenticateToken, async (req, res) => {
-  try {
-    const userToCheck = await User.findOne({ 
-      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
-    }).select('_id').lean();
-    
-    if (!userToCheck) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const activity = await UserActivity.findOne({ user: req.user.id })
-      .select('following')
-      .lean();
-    
-    const following = activity?.following?.some(id => id.toString() === userToCheck._id.toString()) || false;
-
-    res.status(200).json({ following });
-  } catch (error) {
-    console.error('Check following error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
