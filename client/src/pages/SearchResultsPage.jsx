@@ -6,6 +6,8 @@ import { postsAPI, communitiesAPI, usersAPI } from '../services/api';
 import '../styles/SearchResultsPage.css';
 import '../styles/CommunityPage.css';
 
+const getDefaultAvatar = (username) => `https://placehold.co/100/ff4500/white?text=${username?.charAt(0).toUpperCase() || 'U'}`;
+
 const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -105,7 +107,7 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
               <div className="communities-results">
                 {users.map(user => (
                   <Link to={`/user/${user.username}`} key={user._id || user.username} className="community-result">
-                    <img src={user.avatar} alt={user.username} className="community-result-icon" />
+                    <img src={user.avatar || getDefaultAvatar(user.username)} alt={user.username} className="community-result-icon" />
                     <div className="community-result-info">
                       <h3>{user.displayName || user.username}</h3>
                       <p className="user-search-username">u/{user.username}</p>

@@ -8,6 +8,8 @@ import NotificationsDropdown from './NotificationsDropdown';
 import CreatePostModal from '../post/CreatePostModal';
 import '../../styles/Header.css';
 
+const getDefaultAvatar = (username) => `https://placehold.co/100/ff4500/white?text=${username?.charAt(0).toUpperCase() || 'U'}`;
+
 const RedditLogo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="reddit-logo-icon">
     <circle fill="#FF4500" cx="10" cy="10" r="10"/>
@@ -209,7 +211,7 @@ const SearchBar = () => {
                         setSearchQuery('');
                       }}
                     >
-                      <img src={user.avatar} alt="" className="suggestion-icon" />
+                      <img src={user.avatar || getDefaultAvatar(user.username)} alt="" className="suggestion-icon" />
                       <div className="suggestion-info">
                         <div className="suggestion-name">{user.displayName || user.username}</div>
                         <div className="suggestion-meta">u/{user.username} · {user.karma} karma</div>
@@ -320,7 +322,7 @@ const ProfileDropdown = ({ user, onLogout, isDarkMode, onToggleDarkMode }) => {
         aria-expanded={isMenuOpen}
       >
         <img 
-          src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} 
+          src={user.avatar || getDefaultAvatar(user.username)} 
           alt={user.username}
           className="profile-avatar"
         />
@@ -338,7 +340,7 @@ const ProfileDropdown = ({ user, onLogout, isDarkMode, onToggleDarkMode }) => {
             }}
           >
             <img 
-              src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} 
+              src={user.avatar || getDefaultAvatar(user.username)} 
               alt={user.username}
               className="profile-dropdown-avatar"
             />

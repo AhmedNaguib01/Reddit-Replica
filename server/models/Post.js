@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
-const { getTimeAgo } = require('../utils/helpers');
 
-// Post Schema
 const postSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -59,29 +57,6 @@ const postSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Virtual for vote count
-postSchema.virtual('voteCount').get(function() {
-  return this.upvotes - this.downvotes;
-});
-
-// Virtual for time ago
-postSchema.methods.getTimeAgo = function() {
-  return getTimeAgo(this.createdAt);
-};
-
-// Converting the document to a JSON object
-postSchema.methods.toJSON = function() {
-  const obj = this.toObject();
-  obj.id = obj._id;
-  obj.voteCount = this.upvotes - this.downvotes;
-  obj.timeAgo = this.getTimeAgo();
-  obj.subreddit = obj.communityName;
-  obj.author = obj.authorUsername;
-  obj.authorId = obj.author?.toString ? obj.author.toString() : obj.author;
-  return obj;
-};
-
-// Indexes for faster queries
 postSchema.index({ community: 1, createdAt: -1 });
 postSchema.index({ author: 1, createdAt: -1 });
 postSchema.index({ authorUsername: 1, createdAt: -1 }); // for fetching posts by username

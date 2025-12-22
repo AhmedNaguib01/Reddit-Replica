@@ -10,7 +10,7 @@ const Vote = require('../models/Vote');
 const Notification = require('../models/Notification');
 const Chat = require('../models/Chat');
 const { notifyFollow } = require('../utils/notifications');
-const { getTimeAgo } = require('../utils/helpers');
+const { getTimeAgo, ensureAvatar, ensureAvatars } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -37,7 +37,7 @@ router.get('/search', async (req, res) => {
     .limit(10)
     .lean();
 
-    res.status(200).json(users);
+    res.status(200).json(ensureAvatars(users));
   } catch (error) {
     console.error('Search users error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -191,7 +191,7 @@ router.get('/:username/profile', optionalAuth, async (req, res) => {
     
     // Fetch user first to get the ID
     const user = await User.findOne({ username: usernameRegex })
-      .select('-password -passwordResetToken -passwordResetExpires')
+      .select('-password -passwordResetToken -passwordResetExpires -googleId')
       .lean();
     
     if (!user) {
@@ -201,95 +201,103 @@ router.get('/:username/profile', optionalAuth, async (req, res) => {
     const userId = user._id;
     const isOwnProfile = req.user && req.user.id === userId.toString();
 
-    // Fetch all data in parallel for maximum performance
-    const [activity, posts, comments, customFeeds, currentUserActivity] = await Promise.all([
-      // User's activity (followers, following, saved posts)
+    // Build all queries upfront for maximum parallelization
+    const queries = [
+      // User's activity - only populate what we need (limit followers/following for performance)
       UserActivity.findOne({ user: userId })
-        .populate('followers', 'username displayName avatar')
-        .populate('following', 'username displayName avatar')
+        .populate({ path: 'followers', select: 'username displayName avatar', options: { limit: 100 } })
+        .populate({ path: 'following', select: 'username displayName avatar', options: { limit: 100 } })
         .lean(),
       
-      // User's posts
+      // User's posts - only fetch needed fields
       Post.find({ author: userId })
+        .select('title type content authorUsername communityName upvotes downvotes commentCount createdAt')
         .sort({ createdAt: -1 })
-        .limit(50)
+        .limit(25)
         .lean(),
       
-      // User's comments
+      // User's comments - only fetch needed fields
       Comment.find({ author: userId })
+        .select('content post authorUsername upvotes downvotes createdAt')
         .sort({ createdAt: -1 })
-        .limit(50)
+        .limit(25)
         .lean(),
       
       // User's public custom feeds
-      CustomFeed.find({ 
-        creator: userId,
-        isPrivate: false,
-        showOnProfile: true
-      })
+      CustomFeed.find({ creator: userId, isPrivate: false, showOnProfile: true })
+        .select('name description communities isPrivate')
         .populate('communities', 'name iconUrl')
         .sort({ name: 1 })
+        .limit(10)
         .lean(),
-      
-      // Current user's activity (for follow status and votes) - only if logged in and not own profile
-      req.user && !isOwnProfile
-        ? UserActivity.findOne({ user: req.user.id }).select('following').lean()
-        : null
-    ]);
+    ];
 
-    // Format posts
-    const formattedPosts = posts.map(p => ({
-      ...p,
-      id: p._id,
-      voteCount: p.upvotes - p.downvotes,
-      timeAgo: getTimeAgo(p.createdAt),
-      subreddit: p.communityName,
-      author: p.authorUsername
-    }));
-
-    // Add vote info to posts if user is logged in
-    let postsWithVotes = formattedPosts;
+    // Add vote/follow queries if user is logged in
     if (req.user) {
-      const postIds = posts.map(p => p._id);
-      const [votes, savedActivity] = await Promise.all([
-        Vote.find({
-          user: req.user.id,
-          target: { $in: postIds },
-          targetType: 'post'
-        }).select('target voteType').lean(),
-        isOwnProfile ? UserActivity.findOne({ user: req.user.id }).select('savedPosts').lean() : null
-      ]);
-
-      const voteMap = {};
-      votes.forEach(v => {
-        voteMap[v.target.toString()] = v.voteType === 1 ? 'up' : 'down';
-      });
-
-      const savedPostIds = new Set(savedActivity?.savedPosts?.map(id => id.toString()) || []);
-
-      postsWithVotes = formattedPosts.map(p => ({
-        ...p,
-        userVote: voteMap[p._id.toString()] || null,
-        saved: savedPostIds.has(p._id.toString())
-      }));
+      if (!isOwnProfile) {
+        queries.push(UserActivity.findOne({ user: req.user.id }).select('following').lean());
+      } else {
+        queries.push(null); // placeholder
+      }
+    } else {
+      queries.push(null);
     }
 
-    // Format comments
-    const formattedComments = comments.map(c => ({
-      ...c,
-      id: c._id,
-      voteCount: c.upvotes - c.downvotes,
-      timeAgo: getTimeAgo(c.createdAt),
-      author: c.authorUsername,
-      postId: c.post,
-      parentId: c.parentComment
+    // Execute all queries in parallel
+    const [activity, posts, comments, customFeeds, currentUserActivity] = await Promise.all(queries);
+
+    // Get vote info and saved posts in parallel (only if logged in)
+    let voteMap = {};
+    let savedPostIds = new Set();
+    
+    if (req.user && posts.length > 0) {
+      const postIds = posts.map(p => p._id);
+      const voteQuery = Vote.find({
+        user: req.user.id,
+        target: { $in: postIds },
+        targetType: 'post'
+      }).select('target voteType').lean();
+
+      if (isOwnProfile) {
+        const [votes, savedActivity] = await Promise.all([
+          voteQuery,
+          UserActivity.findOne({ user: req.user.id }).select('savedPosts').lean()
+        ]);
+        votes.forEach(v => { voteMap[v.target.toString()] = v.voteType === 1 ? 'up' : 'down'; });
+        savedPostIds = new Set(savedActivity?.savedPosts?.map(id => id.toString()) || []);
+      } else {
+        const votes = await voteQuery;
+        votes.forEach(v => { voteMap[v.target.toString()] = v.voteType === 1 ? 'up' : 'down'; });
+      }
+    }
+
+    // Format posts with vote info
+    const formattedPosts = posts.map(post => ({
+      ...post,
+      id: post._id,
+      voteCount: post.upvotes - post.downvotes,
+      timeAgo: getTimeAgo(post.createdAt),
+      subreddit: post.communityName,
+      author: post.authorUsername,
+      userVote: voteMap[post._id.toString()] || null,
+      saved: savedPostIds.has(post._id.toString())
     }));
 
-    // Format custom feeds
-    const formattedFeeds = customFeeds.map(f => ({
-      ...f,
-      id: f._id,
-      communityCount: f.communities?.length || 0
+    // Format comments inline (avoid extra function call overhead)
+    const formattedComments = comments.map(comment => ({
+      ...comment,
+      id: comment._id,
+      voteCount: comment.upvotes - comment.downvotes,
+      timeAgo: getTimeAgo(comment.createdAt),
+      author: comment.authorUsername,
+      postId: comment.post
+    }));
+
+    // Format custom feeds inline
+    const formattedFeeds = customFeeds.map(feed => ({
+      ...feed,
+      id: feed._id,
+      communityCount: feed.communities?.length || 0
     }));
 
     // Check if current user is following this user
@@ -297,42 +305,45 @@ router.get('/:username/profile', optionalAuth, async (req, res) => {
       id => id.toString() === userId.toString()
     ) || false;
 
-    // Get saved posts if viewing own profile
+    // Get saved posts only if viewing own profile AND there are saved posts
     let savedPosts = [];
     if (isOwnProfile && activity?.savedPosts?.length) {
-      const savedPostDocs = await Post.find({ _id: { $in: activity.savedPosts } })
+      // Limit saved posts fetch and only get essential fields
+      const savedPostDocs = await Post.find({ 
+        _id: { $in: activity.savedPosts.slice(0, 25) } 
+      })
+        .select('title type content authorUsername communityName upvotes downvotes commentCount createdAt')
         .sort({ createdAt: -1 })
         .lean();
       
-      savedPosts = savedPostDocs.map(p => ({
-        ...p,
-        id: p._id,
-        voteCount: p.upvotes - p.downvotes,
-        timeAgo: getTimeAgo(p.createdAt),
-        subreddit: p.communityName,
-        author: p.authorUsername
+      savedPosts = savedPostDocs.map(post => ({
+        ...post,
+        id: post._id,
+        voteCount: post.upvotes - post.downvotes,
+        timeAgo: getTimeAgo(post.createdAt),
+        subreddit: post.communityName,
+        author: post.authorUsername,
+        saved: true
       }));
     }
 
     // Build response
-    const response = {
-      user: {
+    res.status(200).json({
+      user: ensureAvatar({
         ...user,
         id: user._id,
         cakeDay: new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         followerCount: activity?.followers?.length || 0,
         followingCount: activity?.following?.length || 0
-      },
-      posts: postsWithVotes,
+      }),
+      posts: formattedPosts,
       comments: formattedComments,
-      followers: activity?.followers || [],
-      following: activity?.following || [],
+      followers: ensureAvatars(activity?.followers || []),
+      following: ensureAvatars(activity?.following || []),
       customFeeds: formattedFeeds,
       isFollowing,
-      savedPosts: isOwnProfile ? savedPosts : []
-    };
-
-    res.status(200).json(response);
+      savedPosts
+    });
   } catch (error) {
     console.error('Get user profile error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -419,7 +430,7 @@ router.get('/:username/followers', async (req, res) => {
       .populate('followers', '-password -passwordResetToken -passwordResetExpires')
       .lean();
     
-    res.status(200).json(activity?.followers || []);
+    res.status(200).json(ensureAvatars(activity?.followers || []));
   } catch (error) {
     console.error('Get followers error:', error);
     res.status(500).json({ message: 'Server error' });

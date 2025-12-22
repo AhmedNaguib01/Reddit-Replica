@@ -11,7 +11,7 @@ const { sendPasswordResetEmail } = require('../utils/email');
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Helper function to generate JWT token
+// generate JWT token
 const generateToken = (user) => {
   return jwt.sign(
     { 
@@ -106,7 +106,13 @@ router.post('/google', async (req, res) => {
     // Check if user exists with this Google ID
     let user = await User.findOne({ googleId });
 
-    if (!user) {
+    if (user) {
+      // Existing Google user - update avatar if they have placeholder or Google avatar
+      if (picture && (!user.avatar || user.avatar.includes('placehold.co') || user.avatar.includes('googleusercontent.com'))) {
+        user.avatar = picture;
+        await user.save();
+      }
+    } else {
       // Check if email already exists (user registered with email/password)
       const existingEmailUser = await User.findOne({ email: email.toLowerCase() });
       
@@ -114,6 +120,10 @@ router.post('/google', async (req, res) => {
         // Link Google account to existing user
         existingEmailUser.googleId = googleId;
         existingEmailUser.authProvider = existingEmailUser.authProvider === 'local' ? 'local' : 'google';
+        // Update avatar if user has placeholder
+        if (picture && (!existingEmailUser.avatar || existingEmailUser.avatar.includes('placehold.co'))) {
+          existingEmailUser.avatar = picture;
+        }
         await existingEmailUser.save();
         user = existingEmailUser;
       } else {

@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-// User Schema
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -77,22 +76,23 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Hash password before saving
+// Gets called on user.save() and user.create()
 userSchema.pre('save', async function() {
   if (!this.isModified('password') || !this.password) return;
-  // Only hash if not already hashed (bcrypt hashes start with $2)
+  
+  // Only hash if not already hashed (bcrypt hashes start with 2 salt rounds)
   if (!this.password.startsWith('$2')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
 });
 
-// Compare password method
+// user.comparePassword() 
 userSchema.methods.comparePassword = async function(candidatePassword) {
   if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Format karma for display
+// user.getFormattedKarma()
 userSchema.methods.getFormattedKarma = function() {
   const karma = this.karma;
   if (karma >= 1000000) return `${(karma / 1000000).toFixed(1)}M`;
@@ -100,12 +100,11 @@ userSchema.methods.getFormattedKarma = function() {
   return String(karma);
 };
 
-// Format cake day for display
+// user.getFormattedCakeDay()
 userSchema.methods.getFormattedCakeDay = function() {
   return this.cakeDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-// Converting the document to a JSON object
 // Don't return password in JSON
 userSchema.methods.toJSON = function() {
   const obj = this.toObject();
@@ -115,11 +114,12 @@ userSchema.methods.toJSON = function() {
   delete obj.resetPasswordExpires;
   obj.karma = this.getFormattedKarma();
   obj.cakeDay = this.getFormattedCakeDay();
+  if (!obj.avatar) {
+    obj.avatar = `https://placehold.co/100/ff4500/white?text=${this.username?.charAt(0).toUpperCase() || 'U'}`;
+  }
   return obj;
 };
 
-// Indexes for faster queries
-// Note: username and email already have indexes from unique: true
 userSchema.index({ createdAt: -1 }); // for sorting by newest
 userSchema.index({ displayName: 'text' }); // for searching by display name
 

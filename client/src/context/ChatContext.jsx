@@ -33,9 +33,9 @@ export const ChatProvider = ({ children }) => {
     
     fetchUnreadCount();
     
-    // Poll every 15 seconds for chat notifications (balance between responsiveness and performance)
+    // Poll every 5 seconds for chat notifications
     if (currentUser) {
-      const interval = setInterval(fetchUnreadCount, 15000);
+      const interval = setInterval(fetchUnreadCount, 5000);
       return () => clearInterval(interval);
     }
   }, [fetchUnreadCount, authLoading, currentUser]);

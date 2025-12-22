@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const { authenticateToken } = require('../middleware/auth');
 const Chat = require('../models/Chat');
 const User = require('../models/User');
+const { getDefaultAvatar } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -49,7 +50,7 @@ router.get('/', authenticateToken, async (req, res) => {
     
     const avatarMap = {};
     users.forEach(u => {
-      avatarMap[u.username.toLowerCase()] = u.avatar;
+      avatarMap[u.username.toLowerCase()] = u.avatar || getDefaultAvatar(u.username);
     });
 
     // Format chats for response with avatars
@@ -58,7 +59,7 @@ router.get('/', authenticateToken, async (req, res) => {
       return {
         id: chat._id,
         otherUser: otherUsername,
-        otherUserAvatar: avatarMap[otherUsername?.toLowerCase()] || null,
+        otherUserAvatar: avatarMap[otherUsername?.toLowerCase()] || getDefaultAvatar(otherUsername),
         lastMessage: chat.lastMessage,
         updatedAt: chat.updatedAt,
         unreadCount: chat.unreadCount
@@ -110,46 +111,45 @@ router.post(
       }
 
       const { username } = req.body;
+      const lowerUsername = username.toLowerCase();
 
       // Can't chat with yourself
-      if (username.toLowerCase() === req.user.username.toLowerCase()) {
+      if (lowerUsername === req.user.username.toLowerCase()) {
         return res.status(400).json({ message: "You can't chat with yourself" });
       }
 
-      // Find the other user
-      const otherUser = await User.findOne({ 
-        username: { $regex: new RegExp(`^${username}$`, 'i') }
-      });
+      // Find user and existing chat in parallel for speed
+      const [otherUser, existingChat] = await Promise.all([
+        User.findOne({ username: lowerUsername }).select('_id username avatar').lean(),
+        Chat.findOne({ participantUsernames: { $all: [req.user.username.toLowerCase(), lowerUsername] } })
+          .select('_id')
+          .lean()
+      ]);
 
       if (!otherUser) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Check if chat already exists
-      let chat = await Chat.findOne({
-        participants: { $all: [req.user.id, otherUser._id] }
-      });
-
-      if (chat) {
+      if (existingChat) {
         return res.status(200).json({ 
-          id: chat._id, 
+          id: existingChat._id, 
           otherUser: otherUser.username,
-          otherUserAvatar: otherUser.avatar,
+          otherUserAvatar: otherUser.avatar || getDefaultAvatar(otherUser.username),
           isNew: false 
         });
       }
 
       // Create new chat
-      chat = await Chat.create({
+      const chat = await Chat.create({
         participants: [req.user.id, otherUser._id],
-        participantUsernames: [req.user.username, otherUser.username],
+        participantUsernames: [req.user.username.toLowerCase(), lowerUsername],
         messages: []
       });
 
       res.status(201).json({ 
         id: chat._id, 
         otherUser: otherUser.username,
-        otherUserAvatar: otherUser.avatar,
+        otherUserAvatar: otherUser.avatar || getDefaultAvatar(otherUser.username),
         isNew: true 
       });
     } catch (error) {
@@ -174,10 +174,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 
     const otherUsername = chat.participantUsernames.find(u => u !== req.user.username);
+    
+    // Fetch avatar for the other user
+    const otherUser = await User.findOne({ username: otherUsername }).select('avatar').lean();
 
     res.status(200).json({
       id: chat._id,
       otherUser: otherUsername,
+      otherUserAvatar: otherUser?.avatar || getDefaultAvatar(otherUsername),
       messages: chat.messages,
       updatedAt: chat.updatedAt
     });

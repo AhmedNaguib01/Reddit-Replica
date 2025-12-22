@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// UserActivity schema
 const userActivitySchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -41,6 +40,6 @@ userActivitySchema.statics.getOrCreate = async function(userId) {
   return activity;
 };
 
-// Note: user field already has an index from unique: true
+userActivitySchema.index({ user: 1 });
 
 module.exports = mongoose.model('UserActivity', userActivitySchema);

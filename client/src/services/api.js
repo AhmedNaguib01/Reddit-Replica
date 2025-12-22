@@ -72,7 +72,7 @@ export const postsAPI = {
       if (allPostsCache && (now - allPostsCacheTimestamp) < ALL_POSTS_CACHE_DURATION) {
         return allPostsCache;
       }
-      const data = await apiRequest('/posts');
+      const data = await apiRequest('/posts'); // Calls http://localhost:5000/api/posts
       allPostsCache = data;
       allPostsCacheTimestamp = now;
       return data;

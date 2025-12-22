@@ -1,9 +1,5 @@
-// This utility handles sending password reset emails to users.
-// It uses nodemailer to send emails via a configured SMTP server.
-
 const nodemailer = require('nodemailer');
 
-// Configure the email transporter
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -12,7 +8,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Function to send password reset email
 const sendPasswordResetEmail = async (email, resetToken) => {
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
   

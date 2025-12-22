@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// Vote schema
 const voteSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -26,7 +25,6 @@ const voteSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound unique index - one vote per user per target
 voteSchema.index({ user: 1, targetType: 1, target: 1 }, { unique: true });
 voteSchema.index({ target: 1 });
 

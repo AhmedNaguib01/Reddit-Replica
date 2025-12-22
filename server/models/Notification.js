@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
-const { getTimeAgo } = require('../utils/helpers');
 
-// Notification schema
 const notificationSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -42,20 +40,6 @@ const notificationSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Returns the time since the notification was created
-notificationSchema.methods.getTimeAgo = function() {
-  return getTimeAgo(this.createdAt);
-};
-
-// Converting the document to a JSON object
-notificationSchema.methods.toJSON = function() {
-  const obj = this.toObject();
-  obj.id = obj._id;
-  obj.time = this.getTimeAgo();
-  return obj;
-};
-
-// Index for faster queries
 notificationSchema.index({ user: 1, createdAt: -1 });
 notificationSchema.index({ user: 1, read: 1 });
 

@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import '../../styles/EditProfileModal.css';
 
+const getDefaultAvatar = (username) => `https://placehold.co/100/ff4500/white?text=${username?.charAt(0).toUpperCase() || 'U'}`;
+
 const BANNER_PRESETS = [
   { name: 'Purple', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
   { name: 'Ocean', value: 'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)' },
@@ -223,7 +225,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onProfileUpdated }) => {
               background: bannerMode !== 'color' && bannerUrl ? `url(${bannerUrl}) center/cover` : bannerColor 
             }}
           >
-            <img src={avatar || user.avatar} alt="Avatar" className="avatar-preview" />
+            <img src={avatar || user.avatar || getDefaultAvatar(user.username)} alt="Avatar" className="avatar-preview" />
           </div>
 
           {/* Avatar Section */}

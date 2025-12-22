@@ -4,6 +4,7 @@ const { authenticateToken } = require('../middleware/auth');
 const CustomFeed = require('../models/CustomFeed');
 const Community = require('../models/Community');
 const Post = require('../models/Post');
+const { formatCustomFeed, formatPosts } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -19,11 +20,7 @@ router.get('/', authenticateToken, async (req, res) => {
       .lean();
 
     // Add community count to each feed
-    const formattedFeeds = feeds.map(f => ({
-      ...f,
-      id: f._id,
-      communityCount: f.communities?.length || 0
-    }));
+    const formattedFeeds = feeds.map(formatCustomFeed);
 
     res.status(200).json(formattedFeeds);
   } catch (error) {
@@ -54,11 +51,7 @@ router.get('/user/:username', async (req, res) => {
       .lean();
 
     // Format feeds
-    const formattedFeeds = feeds.map(f => ({
-      ...f,
-      id: f._id,
-      communityCount: f.communities?.length || 0
-    }));
+    const formattedFeeds = feeds.map(formatCustomFeed);
 
     res.status(200).json(formattedFeeds);
   } catch (error) {
@@ -83,11 +76,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'This feed is private' });
     }
 
-    res.status(200).json({
-      ...feed,
-      id: feed._id,
-      communityCount: feed.communities?.length || 0
-    });
+    res.status(200).json(formatCustomFeed(feed));
   } catch (error) {
     console.error('Get custom feed error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -117,15 +106,7 @@ router.get('/:id/posts', authenticateToken, async (req, res) => {
       .lean();
 
     // Format lean documents
-    const { getTimeAgo } = require('../utils/helpers');
-    const formattedPosts = posts.map(p => ({
-      ...p,
-      id: p._id,
-      voteCount: p.upvotes - p.downvotes,
-      timeAgo: getTimeAgo(p.createdAt),
-      subreddit: p.communityName,
-      author: p.authorUsername
-    }));
+    const formattedPosts = formatPosts(posts);
 
     res.status(200).json(formattedPosts);
   } catch (error) {
@@ -278,11 +259,7 @@ router.post('/:id/communities', authenticateToken, async (req, res) => {
       .populate('communities', 'name displayName iconUrl memberCount')
       .lean();
 
-    res.status(200).json({
-      ...updatedFeed,
-      id: updatedFeed._id,
-      communityCount: updatedFeed.communities?.length || 0
-    });
+    res.status(200).json(formatCustomFeed(updatedFeed));
   } catch (error) {
     console.error('Add community error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -311,11 +288,7 @@ router.delete('/:id/communities/:communityId', authenticateToken, async (req, re
       .populate('communities', 'name displayName iconUrl memberCount')
       .lean();
 
-    res.status(200).json({
-      ...updatedFeed,
-      id: updatedFeed._id,
-      communityCount: updatedFeed.communities?.length || 0
-    });
+    res.status(200).json(formatCustomFeed(updatedFeed));
   } catch (error) {
     console.error('Remove community error:', error);
     res.status(500).json({ message: 'Server error' });

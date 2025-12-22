@@ -1,24 +1,25 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Cache for user data to avoid repeated DB queries
 const userCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Helper to get user from cache
+// Used to get user data with caching
 const getCachedUser = async (userId) => {
   const cached = userCache.get(userId);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.user;
   }
-  
+  // Fetches username & avatar ONLY 
   const user = await User.findById(userId).select('username avatar').lean();
   if (user) {
+    // Update the map to include the key & value. 
     userCache.set(userId, { user, timestamp: Date.now() });
   }
   return user;
 };
 
+// Used to ensure only authenticated users can access
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -48,8 +49,7 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
-// Optional authentication - doesn't fail if no token, just sets req.user if valid
-// OPTIMIZED: Uses JWT data directly without DB query for most cases
+// Used for routes where authentication is optional
 const optionalAuth = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];

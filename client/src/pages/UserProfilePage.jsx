@@ -11,6 +11,8 @@ import { MessageSquare, Cake, Award, Bookmark, Settings, LayoutGrid, MessageCirc
 import usePageTitle from '../hooks/usePageTitle';
 import '../styles/UserProfilePage.css';
 
+const getDefaultAvatar = (username) => `https://placehold.co/100/ff4500/white?text=${username?.charAt(0).toUpperCase() || 'U'}`;
+
 const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -160,7 +162,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
             
             <div className="profile-info-container">
               <div className="profile-avatar-section">
-                <img src={user.avatar} alt={user.username} className="profile-avatar-large" />
+                <img src={user.avatar || getDefaultAvatar(user.username)} alt={user.username} className="profile-avatar-large" />
               </div>
               
               <div className="profile-details">
@@ -441,7 +443,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
               <div className="profile-users-list">
                 {followers.map(follower => (
                   <Link to={`/user/${follower.username}`} key={follower.id} className="user-list-card">
-                    <img src={follower.avatar} alt={follower.username} className="user-list-avatar" />
+                    <img src={follower.avatar || getDefaultAvatar(follower.username)} alt={follower.username} className="user-list-avatar" />
                     <div className="user-list-info">
                       <span className="user-list-name">u/{follower.username}</span>
                       <span className="user-list-karma">{follower.karma} karma</span>
@@ -461,7 +463,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
               <div className="profile-users-list">
                 {followingList.map(followedUser => (
                   <Link to={`/user/${followedUser.username}`} key={followedUser.id} className="user-list-card">
-                    <img src={followedUser.avatar} alt={followedUser.username} className="user-list-avatar" />
+                    <img src={followedUser.avatar || getDefaultAvatar(followedUser.username)} alt={followedUser.username} className="user-list-avatar" />
                     <div className="user-list-info">
                       <span className="user-list-name">u/{followedUser.username}</span>
                       <span className="user-list-karma">{followedUser.karma} karma</span>

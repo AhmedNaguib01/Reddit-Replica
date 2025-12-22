@@ -7,7 +7,7 @@ const Vote = require('../models/Vote');
 const User = require('../models/User');
 const UserActivity = require('../models/UserActivity');
 const { notifyPostUpvote } = require('../utils/notifications');
-const { getTimeAgo } = require('../utils/helpers');
+const { formatPost, formatPosts } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -74,14 +74,7 @@ router.get('/', optionalAuth, async (req, res) => {
         .limit(50)
         .lean();
 
-      formattedPosts = posts.map(p => ({
-        ...p,
-        id: p._id,
-        voteCount: p.upvotes - p.downvotes,
-        timeAgo: getTimeAgo(p.createdAt),
-        subreddit: p.communityName,
-        author: p.authorUsername
-      }));
+      formattedPosts = formatPosts(posts);
 
       // Cache homepage posts only
       if (!subreddit) {
@@ -131,14 +124,7 @@ router.get('/search', optionalAuth, async (req, res) => {
       .limit(30)
       .lean();
 
-    const formattedPosts = posts.map(p => ({
-      ...p,
-      id: p._id,
-      voteCount: p.upvotes - p.downvotes,
-      timeAgo: getTimeAgo(p.createdAt),
-      subreddit: p.communityName,
-      author: p.authorUsername
-    }));
+    const formattedPosts = formatPosts(posts);
 
     const postsWithVotes = await addUserVoteInfo(formattedPosts, req.user?.id);
 
@@ -164,14 +150,7 @@ router.get('/user/saved', authenticateToken, async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    const formattedPosts = posts.map(p => ({
-      ...p,
-      id: p._id,
-      voteCount: p.upvotes - p.downvotes,
-      timeAgo: getTimeAgo(p.createdAt),
-      subreddit: p.communityName,
-      author: p.authorUsername
-    }));
+    const formattedPosts = formatPosts(posts);
 
     const postsWithVotes = await addUserVoteInfo(formattedPosts, req.user.id);
 
@@ -190,14 +169,7 @@ router.get('/by-user/:username', optionalAuth, async (req, res) => {
       .limit(50)
       .lean();
 
-    const formattedPosts = posts.map(p => ({
-      ...p,
-      id: p._id,
-      voteCount: p.upvotes - p.downvotes,
-      timeAgo: getTimeAgo(p.createdAt),
-      subreddit: p.communityName,
-      author: p.authorUsername
-    }));
+    const formattedPosts = formatPosts(posts);
 
     const postsWithVotes = await addUserVoteInfo(formattedPosts, req.user?.id);
 
@@ -218,14 +190,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }
 
     // Format the lean document
-    const formattedPost = {
-      ...post,
-      id: post._id,
-      voteCount: post.upvotes - post.downvotes,
-      timeAgo: getTimeAgo(post.createdAt),
-      subreddit: post.communityName,
-      author: post.authorUsername
-    };
+    const formattedPost = formatPost(post);
 
     const postsWithVotes = await addUserVoteInfo([formattedPost], req.user?.id);
 

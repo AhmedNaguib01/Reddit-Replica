@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// Community Schema
 const communitySchema = new mongoose.Schema({
   name: {
     type: String,
@@ -59,36 +58,6 @@ const communitySchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Virtual for formatted member count
-communitySchema.methods.getFormattedMembers = function() {
-  const count = this.memberCount;
-  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
-  if (count >= 1000) return `${(count / 1000).toFixed(0)}k`;
-  return String(count);
-};
-
-// Virtual for online count
-communitySchema.methods.getOnlineCount = function() {
-  const online = Math.max(Math.floor(this.memberCount * 0.003), 1);
-  if (online >= 1000) {
-    return `${(online / 1000).toFixed(0)}k`;
-  }
-  return String(online);
-};
-
-// Converting the document to a JSON object
-communitySchema.methods.toJSON = function() {
-  const obj = this.toObject();
-  obj.id = obj.name;
-  obj.members = this.getFormattedMembers();
-  obj.online = this.getOnlineCount();
-  obj.created = this.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  obj.creatorId = obj.creator?.toString();
-  return obj;
-};
-
-// Indexes for faster queries
-// Note: name already has an index from unique: true
 communitySchema.index({ memberCount: -1 });
 communitySchema.index({ category: 1 });
 communitySchema.index({ creator: 1 });

@@ -1,9 +1,5 @@
-// This file defines the Chat model for MongoDB using Mongoose.
-// It includes schemas for messages and the chat itself.
-
 const mongoose = require('mongoose');
 
-// The message schema.
 const messageSchema = new mongoose.Schema({
   sender: {
     type: mongoose.Schema.Types.ObjectId,
@@ -43,7 +39,6 @@ const messageSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// The chat schema.
 const chatSchema = new mongoose.Schema({
   participants: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -64,8 +59,8 @@ const chatSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for faster queries
 chatSchema.index({ participants: 1 });
+chatSchema.index({ participantUsernames: 1 });
 chatSchema.index({ updatedAt: -1 });
 
 module.exports = mongoose.model('Chat', chatSchema);

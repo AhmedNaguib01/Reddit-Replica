@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { authenticateToken } = require('../middleware/auth');
 const Community = require('../models/Community');
 const UserActivity = require('../models/UserActivity');
+const { formatCommunity, formatCount } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -155,12 +156,8 @@ router.get('/', async (req, res) => {
     // Format communities with id field for routing
     const formattedCommunities = communities.map(c => ({
       ...c,
-      id: c.name, // Use name as id for routing (matches other endpoints)
-      members: c.memberCount >= 1000000 
-        ? `${(c.memberCount / 1000000).toFixed(1)}M`
-        : c.memberCount >= 1000 
-          ? `${(c.memberCount / 1000).toFixed(0)}k`
-          : String(c.memberCount)
+      id: c.name,
+      members: formatCount(c.memberCount)
     }));
     
     // Update cache
@@ -198,18 +195,7 @@ router.get('/:id', async (req, res) => {
     }
 
     // Format lean document
-    const formattedCommunity = {
-      ...community,
-      id: community.name,
-      members: community.memberCount >= 1000000 
-        ? `${(community.memberCount / 1000000).toFixed(1)}M`
-        : community.memberCount >= 1000 
-          ? `${(community.memberCount / 1000).toFixed(0)}k`
-          : String(community.memberCount),
-      online: String(Math.max(Math.floor(community.memberCount * 0.003), 1)),
-      created: new Date(community.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      creatorId: community.creator?.toString()
-    };
+    const formattedCommunity = formatCommunity(community);
     
     // Cache the result
     communityCache.set(communityName, { data: formattedCommunity, timestamp: Date.now() });

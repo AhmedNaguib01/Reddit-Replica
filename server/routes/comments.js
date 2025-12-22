@@ -8,6 +8,7 @@ const User = require('../models/User');
 
 const UserActivity = require('../models/UserActivity');
 const { notifyPostComment, notifyCommentReply } = require('../utils/notifications');
+const { formatComment } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -55,18 +56,11 @@ const addUserVoteInfo = async (comments, userId) => {
 const buildCommentTreeLean = (comments) => {
   const commentMap = {};
   const roots = [];
-  const { getTimeAgo } = require('../utils/helpers');
 
   // Create map with formatted data
   comments.forEach(comment => {
     commentMap[comment._id.toString()] = {
-      ...comment,
-      id: comment._id,
-      voteCount: comment.upvotes - comment.downvotes,
-      timeAgo: getTimeAgo(comment.createdAt),
-      author: comment.authorUsername,
-      postId: comment.post,
-      parentId: comment.parentComment,
+      ...formatComment(comment),
       replies: []
     };
   });
@@ -119,16 +113,7 @@ router.get('/user/:username', async (req, res) => {
       .lean();
 
     // Format lean documents
-    const { getTimeAgo } = require('../utils/helpers');
-    const formattedComments = comments.map(c => ({
-      ...c,
-      id: c._id,
-      voteCount: c.upvotes - c.downvotes,
-      timeAgo: getTimeAgo(c.createdAt),
-      author: c.authorUsername,
-      postId: c.post,
-      parentId: c.parentComment
-    }));
+    const formattedComments = comments.map(formatComment);
 
     res.status(200).json(formattedComments);
   } catch (error) {

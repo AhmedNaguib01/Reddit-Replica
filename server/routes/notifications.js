@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const Notification = require('../models/Notification');
+const { formatNotifications } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -13,12 +14,7 @@ router.get('/', authenticateToken, async (req, res) => {
       .lean();
 
     // Format lean documents
-    const { getTimeAgo } = require('../utils/helpers');
-    const formattedNotifications = notifications.map(n => ({
-      ...n,
-      id: n._id,
-      time: getTimeAgo(n.createdAt)
-    }));
+    const formattedNotifications = formatNotifications(notifications);
 
     res.status(200).json(formattedNotifications);
   } catch (error) {
