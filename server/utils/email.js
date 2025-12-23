@@ -1,19 +1,13 @@
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const sendPasswordResetEmail = async (email, resetToken) => {
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
   
-  const mailOptions = {
-    from: `"Reddit-Replica" <${process.env.EMAIL_USER}>`,
+  const msg = {
     to: email,
+    from: process.env.SENDGRID_FROM_EMAIL, // Your verified sender email
     subject: 'Password Reset Request',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -28,7 +22,7 @@ const sendPasswordResetEmail = async (email, resetToken) => {
     `,
   };
 
-  await transporter.sendMail(mailOptions);
+  await sgMail.send(msg);
 };
 
 module.exports = { sendPasswordResetEmail };
