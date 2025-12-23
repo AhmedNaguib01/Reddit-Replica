@@ -267,14 +267,28 @@ router.post('/forgot-password',
       await user.save();
 
       // Send email with unhashed token
-      await sendPasswordResetEmail(user.email, resetToken);
+      try {
+        await sendPasswordResetEmail(user.email, resetToken);
+        console.log(`Password reset email sent successfully to ${user.email}`);
+      } catch (emailError) {
+        // Revert the token save if email fails
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+        console.error('Email sending failed:', emailError.message);
+        throw emailError;
+      }
 
       res.status(200).json({ 
         message: 'If an account with that email exists, we sent a password reset link' 
       });
     } catch (error) {
-      console.error('Forgot password error:', error);
-      res.status(500).json({ message: 'Error sending password reset email' });
+      console.error('Forgot password error:', error.message || error);
+      res.status(500).json({ 
+        message: 'Error sending password reset email. Please try again later.',
+        // Include error details in non-production for debugging
+        ...(process.env.NODE_ENV !== 'production' && { debug: error.message })
+      });
     }
   }
 );
