@@ -1,12 +1,18 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const sendPasswordResetEmail = async (email, resetToken) => {
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
   
-  await resend.emails.send({
-    from: 'Reddit-Replica <onboarding@resend.dev>',
+  const mailOptions = {
+    from: `"Reddit-Replica" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Password Reset Request',
     html: `
@@ -20,7 +26,9 @@ const sendPasswordResetEmail = async (email, resetToken) => {
         <p style="color: #888; font-size: 12px;">This email was sent from Reddit-Replica</p>
       </div>
     `,
-  });
+  };
+
+  await transporter.sendMail(mailOptions);
 };
 
 module.exports = { sendPasswordResetEmail };
