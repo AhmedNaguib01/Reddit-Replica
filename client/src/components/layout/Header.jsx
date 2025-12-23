@@ -482,7 +482,6 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
           onClose={() => setIsCreatePostOpen(false)}
           onPostCreated={() => {
             setIsCreatePostOpen(false);
-            window.location.reload();
           }}
         />
       )}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, FileText, Image, Link, Upload } from 'lucide-react';
 import { postsAPI, communitiesAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +19,7 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { joinedCommunities: sidebarJoined, addJoinedCommunity } = useSidebar();
+  const navigate = useNavigate();
 
   // Use joined communities from sidebar context
   const communities = sidebarJoined;
@@ -80,9 +82,10 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
   };
 
   const submitPost = async () => {
+    const targetCommunity = subreddit || selectedCommunity; // Save before any state changes
+    
     try {
       setLoading(true);
-      const targetCommunity = subreddit || selectedCommunity;
       const postData = {
         title: title.trim(),
         content: content.trim(),
@@ -90,8 +93,11 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
         subreddit: targetCommunity,
       };
 
-      await postsAPI.create(postData);
+      const newPost = await postsAPI.create(postData);
       showToast('Post created successfully', 'success');
+      
+      // Get the post ID from the response
+      const postId = newPost?._id || newPost?.id;
       
       // Reset form
       setTitle('');
@@ -100,10 +106,15 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
       setSelectedCommunity('');
       setImageMode('url');
       
-      // Close modal and refresh
+      // Close modal first
       onClose();
       if (onPostCreated) {
         onPostCreated();
+      }
+      
+      // Navigate to the newly created post
+      if (postId) {
+        navigate(`/post/${postId}`);
       }
     } catch (error) {
       console.error('Error creating post:', error);

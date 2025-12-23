@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { X, Users, Link, Upload } from 'lucide-react';
 import { communitiesAPI } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -63,6 +64,7 @@ const CreateCommunityModal = ({ isOpen, onClose, onCommunityCreated }) => {
   const [bannerMode, setBannerMode] = useState('url'); // 'url' or 'upload'
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   // Handle file upload for icon (compress to 200x200)
   const handleIconUpload = async (e) => {
@@ -130,8 +132,9 @@ const CreateCommunityModal = ({ isOpen, onClose, onCommunityCreated }) => {
         bannerUrl: bannerUrl.trim() || 'https://placehold.co/1200x200/0079d3/white?text=Community+Banner',
       };
 
+      const communityName = name.trim(); // Save before reset
       const newCommunity = await communitiesAPI.create(communityData);
-      showToast(`r/${name} created successfully`, 'success');
+      showToast(`r/${communityName} created successfully`, 'success');
       
       // Reset form
       setName('');
@@ -147,6 +150,9 @@ const CreateCommunityModal = ({ isOpen, onClose, onCommunityCreated }) => {
       if (onCommunityCreated) {
         onCommunityCreated(newCommunity);
       }
+      
+      // Navigate to the newly created community
+      navigate(`/r/${communityName}`);
     } catch (error) {
       console.error('Error creating community:', error);
       showToast(`Failed to create community: ${error.message}`, 'error');
