@@ -44,5 +44,3 @@ const sendPasswordResetEmail = async (email, resetToken) => {
 };
 
 module.exports = { sendPasswordResetEmail };
-
-module.exports = { sendPasswordResetEmail };
