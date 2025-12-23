@@ -10,32 +10,40 @@ const getTransporter = () => {
       console.warn('Email credentials not configured. Password reset emails will be simulated.');
       return null;
     }
-    
+
     transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      // Add timeout to prevent hanging
+      connectionTimeout: 5000, // 5 seconds
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
   }
   return transporter;
 };
 
-const sendPasswordResetEmail = async (email, resetToken) => {
+// Non-blocking email send - fires and forgets
+const sendPasswordResetEmail = (email, resetToken) => {
   const resetUrl = `${process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
-  
+
+  // Log the reset URL immediately (useful for debugging)
+  console.log('=== PASSWORD RESET REQUEST ===');
+  console.log(`Email: ${email}`);
+  console.log(`Reset URL: ${resetUrl}`);
+  console.log('==============================');
+
   const transport = getTransporter();
-  
-  // If no transporter (credentials not configured), log the reset URL for development
+
+  // If no transporter (credentials not configured), just return
   if (!transport) {
-    console.log('=== PASSWORD RESET (Email not configured) ===');
-    console.log(`Email: ${email}`);
-    console.log(`Reset URL: ${resetUrl}`);
-    console.log('=============================================');
-    return; // Don't throw error, just skip sending
+    console.log('Email not configured - skipping send');
+    return;
   }
-  
+
   const mailOptions = {
     from: `"Reddit-Replica" <${process.env.EMAIL_USER}>`,
     to: email,
@@ -53,19 +61,10 @@ const sendPasswordResetEmail = async (email, resetToken) => {
     `,
   };
 
-  try {
-    await transport.sendMail(mailOptions);
-    console.log(`Password reset email sent to ${email}`);
-  } catch (error) {
-    console.error('Failed to send password reset email:', error.message);
-    // Log the reset URL so it can still be used in development
-    console.log('=== PASSWORD RESET (Email failed) ===');
-    console.log(`Email: ${email}`);
-    console.log(`Reset URL: ${resetUrl}`);
-    console.log('=====================================');
-    // Don't throw - let the flow continue so user gets success message
-    // This prevents email enumeration attacks
-  }
+  // Fire and forget - don't await, don't block
+  transport.sendMail(mailOptions)
+    .then(() => console.log(`Password reset email sent successfully to ${email}`))
+    .catch((error) => console.error('Failed to send password reset email:', error.message));
 };
 
 module.exports = { sendPasswordResetEmail };

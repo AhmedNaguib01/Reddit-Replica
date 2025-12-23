@@ -272,8 +272,8 @@ router.post('/forgot-password',
       user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
       await user.save();
 
-      // Send email with unhashed token
-      await sendPasswordResetEmail(user.email, resetToken);
+      // Send email with unhashed token (non-blocking, fire and forget)
+      sendPasswordResetEmail(user.email, resetToken);
 
       res.status(200).json({ 
         message: 'If an account with that email exists, we sent a password reset link' 
