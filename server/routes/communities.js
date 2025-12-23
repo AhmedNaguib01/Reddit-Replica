@@ -265,7 +265,7 @@ router.post(
       activity.joinedCommunities.push(newCommunity._id);
       await activity.save();
 
-      res.status(201).json(newCommunity);
+      res.status(201).json(formatCommunity(newCommunity.toObject()));
     } catch (error) {
       console.error('Create community error:', error);
       res.status(500).json({ message: 'Server error' });
@@ -371,7 +371,7 @@ router.put(
 
       await community.save();
 
-      res.status(200).json(community);
+      res.status(200).json(formatCommunity(community.toObject()));
     } catch (error) {
       console.error('Update community error:', error);
       res.status(500).json({ message: 'Server error' });

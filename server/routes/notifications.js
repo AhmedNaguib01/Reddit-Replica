@@ -45,13 +45,13 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
       { _id: req.params.id, user: req.user.id },
       { read: true },
       { new: true }
-    );
+    ).lean();
 
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found' });
     }
 
-    res.status(200).json(notification);
+    res.status(200).json({ ...notification, id: notification._id });
   } catch (error) {
     console.error('Mark read error:', error);
     res.status(500).json({ message: 'Server error' });

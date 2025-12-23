@@ -191,7 +191,8 @@ router.post(
         await notifyPostComment(post, req.user);
       }
 
-      res.status(201).json(newComment);
+      // Format the comment before sending response
+      res.status(201).json(formatComment(newComment.toObject()));
     } catch (error) {
       console.error('Create comment error:', error);
       res.status(500).json({ message: 'Server error' });
@@ -224,7 +225,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     await comment.save();
 
-    res.status(200).json(comment);
+    // Format the comment before sending response
+    res.status(200).json(formatComment(comment.toObject()));
   } catch (error) {
     console.error('Update comment error:', error);
     res.status(500).json({ message: 'Server error' });

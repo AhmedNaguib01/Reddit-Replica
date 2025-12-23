@@ -242,7 +242,7 @@ router.post(
       // Invalidate posts cache when new post is created
       invalidatePostsCache();
 
-      res.status(201).json(newPost);
+      res.status(201).json(formatPost(newPost.toObject()));
     } catch (error) {
       console.error('Create post error:', error);
       res.status(500).json({ message: 'Server error' });
@@ -272,7 +272,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     await post.save();
 
-    res.status(200).json(post);
+    res.status(200).json(formatPost(post.toObject()));
   } catch (error) {
     console.error('Update post error:', error);
     res.status(500).json({ message: 'Server error' });

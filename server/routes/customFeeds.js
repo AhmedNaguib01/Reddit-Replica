@@ -155,7 +155,7 @@ router.post(
         communities: []
       });
 
-      res.status(201).json(newFeed);
+      res.status(201).json(formatCustomFeed(newFeed.toObject()));
     } catch (error) {
       console.error('Create custom feed error:', error);
       res.status(500).json({ message: 'Server error' });
@@ -185,7 +185,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     await feed.save();
 
-    res.status(200).json(feed);
+    res.status(200).json(formatCustomFeed(feed.toObject()));
   } catch (error) {
     console.error('Update custom feed error:', error);
     res.status(500).json({ message: 'Server error' });
