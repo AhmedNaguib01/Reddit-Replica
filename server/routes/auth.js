@@ -224,14 +224,19 @@ router.post('/forgot-password',
   [
     body('email')
       .trim()
+      .notEmpty()
+      .withMessage('Email is required')
       .isEmail()
       .withMessage('Please enter a valid email address')
-      .normalizeEmail()
   ],
   async (req, res) => {
     try {
+      // Debug logging for production issues
+      console.log('Forgot password request body:', JSON.stringify(req.body));
+      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('Validation errors:', JSON.stringify(errors.array()));
         return res.status(400).json({ 
           message: errors.array()[0].msg,
           errors: errors.array() 
@@ -239,8 +244,9 @@ router.post('/forgot-password',
       }
 
       const { email } = req.body;
+      const normalizedEmail = email.trim().toLowerCase();
 
-      const user = await User.findOne({ email: email.toLowerCase() });
+      const user = await User.findOne({ email: normalizedEmail });
       
       // Always return success to prevent email enumeration
       if (!user) {

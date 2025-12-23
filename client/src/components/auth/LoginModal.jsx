@@ -415,7 +415,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             <div className="modal-header">
               <h2>Create your username and password</h2>
               <p className="legal-text">
-                Reddit is anonymous, so your username is what you'll go by here. Choose wisely—usernames can only contain lowercase letters, numbers, and underscores.
+                Reddit is anonymous, so your username is what you'll go by here. Choose wisely, usernames can only contain lowercase letters, numbers, and underscores.
               </p>
             </div>
 
