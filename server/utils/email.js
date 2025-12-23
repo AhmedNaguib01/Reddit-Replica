@@ -1,49 +1,36 @@
 const nodemailer = require('nodemailer');
 
-// Create transporter with better error handling
-let transporter = null;
-
-const getTransporter = () => {
-  if (!transporter) {
-    // Check if email credentials are configured
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn('Email credentials not configured. Password reset emails will be simulated.');
-      return null;
-    }
-
-    transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      // Add timeout to prevent hanging
-      connectionTimeout: 5000, // 5 seconds
-      greetingTimeout: 5000,
-      socketTimeout: 10000,
-    });
+const createTransporter = () => {
+  // Validate required environment variables
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn('Warning: EMAIL_USER or EMAIL_PASS not configured. Password reset emails will fail.');
+    return null;
   }
-  return transporter;
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 };
 
-// Non-blocking email send - fires and forgets
-const sendPasswordResetEmail = (email, resetToken) => {
-  const resetUrl = `${process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
-
-  // Log the reset URL immediately (useful for debugging)
-  console.log('=== PASSWORD RESET REQUEST ===');
-  console.log(`Email: ${email}`);
-  console.log(`Reset URL: ${resetUrl}`);
-  console.log('==============================');
-
-  const transport = getTransporter();
-
-  // If no transporter (credentials not configured), just return
-  if (!transport) {
-    console.log('Email not configured - skipping send');
-    return;
+const sendPasswordResetEmail = async (email, resetToken) => {
+  const transporter = createTransporter();
+  
+  if (!transporter) {
+    console.error('Email transporter not configured. Check EMAIL_USER and EMAIL_PASS environment variables.');
+    throw new Error('Email service not configured');
   }
 
+  if (!process.env.CLIENT_URL) {
+    console.error('CLIENT_URL environment variable not set');
+    throw new Error('Client URL not configured');
+  }
+
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+  
   const mailOptions = {
     from: `"Reddit-Replica" <${process.env.EMAIL_USER}>`,
     to: email,
@@ -61,10 +48,13 @@ const sendPasswordResetEmail = (email, resetToken) => {
     `,
   };
 
-  // Fire and forget - don't await, don't block
-  transport.sendMail(mailOptions)
-    .then(() => console.log(`Password reset email sent successfully to ${email}`))
-    .catch((error) => console.error('Failed to send password reset email:', error.message));
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Password reset email sent to ${email}`);
+  } catch (error) {
+    console.error('Failed to send password reset email:', error.message);
+    throw new Error('Failed to send password reset email');
+  }
 };
 
 module.exports = { sendPasswordResetEmail };

@@ -224,19 +224,14 @@ router.post('/forgot-password',
   [
     body('email')
       .trim()
-      .notEmpty()
-      .withMessage('Email is required')
       .isEmail()
       .withMessage('Please enter a valid email address')
+      .normalizeEmail()
   ],
   async (req, res) => {
     try {
-      // Debug logging for production issues
-      console.log('Forgot password request body:', JSON.stringify(req.body));
-      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        console.log('Validation errors:', JSON.stringify(errors.array()));
         return res.status(400).json({ 
           message: errors.array()[0].msg,
           errors: errors.array() 
@@ -244,9 +239,8 @@ router.post('/forgot-password',
       }
 
       const { email } = req.body;
-      const normalizedEmail = email.trim().toLowerCase();
 
-      const user = await User.findOne({ email: normalizedEmail });
+      const user = await User.findOne({ email: email.toLowerCase() });
       
       // Always return success to prevent email enumeration
       if (!user) {
@@ -272,8 +266,8 @@ router.post('/forgot-password',
       user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
       await user.save();
 
-      // Send email with unhashed token (non-blocking, fire and forget)
-      sendPasswordResetEmail(user.email, resetToken);
+      // Send email with unhashed token
+      await sendPasswordResetEmail(user.email, resetToken);
 
       res.status(200).json({ 
         message: 'If an account with that email exists, we sent a password reset link' 
