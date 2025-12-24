@@ -5,7 +5,7 @@ const getAuthToken = () => localStorage.getItem('authToken');
 // Cache for posts
 let allPostsCache = null;
 let allPostsCacheTimestamp = 0;
-const ALL_POSTS_CACHE_DURATION = 30 * 1000; // 30 seconds
+const ALL_POSTS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 // Function to invalidate posts cache
 const invalidatePostsCache = () => {

@@ -14,7 +14,7 @@ const router = express.Router();
 // Server-side cache for posts (reduces DB queries significantly)
 let postsCache = null;
 let postsCacheTimestamp = 0;
-const POSTS_CACHE_DURATION = 30 * 1000; // 30 seconds cache
+const POSTS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 const invalidatePostsCache = () => {
   postsCache = null;
