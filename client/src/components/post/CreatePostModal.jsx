@@ -56,11 +56,6 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
     }
   };
 
-  // Check if user is member of selected community
-  const isUserMember = (communityName) => {
-    return joinedCommunityNames.includes(communityName);
-  };
-
   // Handle join and post
   const handleJoinAndPost = async () => {
     try {
@@ -83,7 +78,7 @@ const CreatePostModal = ({ isOpen, onClose, subreddit, onPostCreated }) => {
 
   const submitPost = async () => {
     const targetCommunity = subreddit || selectedCommunity; // Save before any state changes
-    
+
     try {
       setLoading(true);
       const postData = {

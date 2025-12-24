@@ -488,7 +488,7 @@
   gap: 2px;
   padding: 6px 10px;
   margin-bottom: 4px;
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   border-left: 3px solid var(--color-primary);
   font-size: 12px;
@@ -500,24 +500,39 @@
   background: rgba(255, 255, 255, 0.15);
 }
 
+.chat-message.received .message-reply-preview {
+  background: rgba(0, 0, 0, 0.06);
+}
+
 .reply-username {
   font-weight: 600;
   color: var(--color-primary);
 }
 
 .chat-message.sent .reply-username {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.dark-mode .chat-message.sent .reply-username,
+.dark-mode .chat-message.received .reply-username,
+.dark-mode .reply-username {
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .reply-content {
-  color: var(--color-text-secondary);
+  color: rgba(0, 0, 0, 0.95); /* black in light mode */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.chat-message.sent .reply-content {
-  color: rgba(255, 255, 255, 0.7);
+.dark-mode .reply-content {
+  color: rgba(255, 255, 255, 0.95); /* white in dark mode */
+}
+
+.chat-message.sent .reply-content,
+.chat-message.received .reply-content {
+  color: inherit; /* allow theme rules to apply */
 }
 
 /* Message bubble wrapper */

@@ -104,7 +104,11 @@
 }
 
 .btn-profile-action.btn-secondary:hover {
-  background-color: #e3e5e8;
+  background-color: var(--color-bg-hover);
+}
+
+.dark-mode .btn-profile-action.btn-secondary:hover {
+  background-color: #3a3a3c;
 }
 
 /* Tabs */

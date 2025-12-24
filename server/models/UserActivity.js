@@ -40,6 +40,4 @@ userActivitySchema.statics.getOrCreate = async function(userId) {
   return activity;
 };
 
-userActivitySchema.index({ user: 1 });
-
 module.exports = mongoose.model('UserActivity', userActivitySchema);
