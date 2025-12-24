@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { MessageSquare, Bookmark, Share2, MoreHorizontal, Edit, Trash2, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Bookmark, Share2, MoreHorizontal, Edit, Trash2, ArrowLeft, Sparkles, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useSidebar } from '../context/SidebarContext';
 import Sidebar from '../components/layout/Sidebar';
 import RightSidebar from '../components/layout/RightSidebar';
 import CommentList from '../components/comment/CommentList';
@@ -14,6 +16,7 @@ import { PostSkeleton, CommentListSkeleton } from '../components/common/LoadingS
 import { postsAPI, commentsAPI, communitiesAPI } from '../services/api';
 import usePageTitle from '../hooks/usePageTitle';
 import '../styles/PostDetailPage.css';
+import '../styles/Post.css';
 
 const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const { postId } = useParams();
@@ -31,8 +34,12 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isMember, setIsMember] = useState(false);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [summary, setSummary] = useState('');
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const optionsRef = useRef(null);
   const { showToast } = useToast();
+  const { addJoinedCommunity, removeJoinedCommunity } = useSidebar();
   
   const isOwner = currentUser && post && currentUser.username === post.author;
   
@@ -146,6 +153,74 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
 
   const handlePostUpdated = (updatedPost) => {
     setPost(prev => ({ ...prev, ...updatedPost }));
+  };
+
+  const handleSummarize = async () => {
+    setIsSummaryModalOpen(true);
+    
+    // If we already have a summary, don't fetch again
+    if (summary) return;
+    
+    setIsSummarizing(true);
+    try {
+      const result = await postsAPI.summarize(postId);
+      setSummary(result.summary);
+    } catch (error) {
+      console.error('Summarize error:', error);
+      setSummary('Failed to generate summary. Please try again later.');
+      showToast('Failed to generate summary', 'error');
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!currentUser) {
+      onAuthAction();
+      return;
+    }
+
+    // Optimistic update
+    const wasJoined = isMember;
+    const newJoined = !wasJoined;
+    setIsMember(newJoined);
+    
+    // Update sidebar immediately
+    if (newJoined) {
+      addJoinedCommunity({ name: post.subreddit, iconUrl: post.subredditIcon });
+    } else {
+      removeJoinedCommunity(post.subreddit);
+    }
+    
+    showToast(
+      newJoined ? `Joined r/${post.subreddit}` : `Left r/${post.subreddit}`,
+      'success'
+    );
+
+    try {
+      const result = await communitiesAPI.join(post.subreddit);
+      communitiesAPI.invalidateCache();
+      
+      // Sync with server response if different
+      if (result.joined !== newJoined) {
+        setIsMember(result.joined);
+        if (result.joined && result.community) {
+          addJoinedCommunity(result.community);
+        } else if (!result.joined) {
+          removeJoinedCommunity(post.subreddit);
+        }
+      }
+    } catch (error) {
+      // Rollback on error
+      setIsMember(wasJoined);
+      if (wasJoined) {
+        addJoinedCommunity({ name: post.subreddit, iconUrl: post.subredditIcon });
+      } else {
+        removeJoinedCommunity(post.subreddit);
+      }
+      console.error('Join error:', error);
+      showToast(`Failed to ${newJoined ? 'join' : 'leave'}: ${error.message}`, 'error');
+    }
   };
 
   const handleCommentSubmit = async (e) => {
@@ -269,6 +344,9 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
                     <span className="separator">•</span>
                     <span className="post-time">{post.timeAgo}</span>
                   </div>
+                  <button className={`btn-join-sm ${isMember ? 'joined' : ''}`} onClick={handleJoin}>
+                    {isMember ? 'Joined' : 'Join'}
+                  </button>
                 </div>
 
                 {/* Title */}
@@ -305,6 +383,10 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
                   <button className="action-button" onClick={() => setIsShareModalOpen(true)}>
                     <Share2 size={18} />
                     <span>Share</span>
+                  </button>
+                  <button className="action-button btn-ai-detail" onClick={handleSummarize} title="Summarize with AI">
+                    <Sparkles size={18} />
+                    <span>Summarize</span>
                   </button>
                   <div className="post-options-wrapper" ref={optionsRef}>
                     <button className="action-button" onClick={() => setIsOptionsOpen(!isOptionsOpen)}>
@@ -362,6 +444,41 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
               confirmText="Delete"
               type="danger"
             />
+
+            {/* AI Summary Modal */}
+            {isSummaryModalOpen && createPortal(
+              <div className="summary-overlay" onClick={() => setIsSummaryModalOpen(false)}>
+                <div className="summary-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="summary-modal-header">
+                    <div className="summary-modal-title">
+                      <Sparkles size={20} className="summary-icon" />
+                      <span>AI Summary</span>
+                    </div>
+                    <button 
+                      className="summary-modal-close" 
+                      onClick={() => setIsSummaryModalOpen(false)}
+                      aria-label="Close"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="summary-modal-content">
+                    {isSummarizing ? (
+                      <div className="summary-loading">
+                        <div className="summary-spinner"></div>
+                        <span>Generating summary...</span>
+                      </div>
+                    ) : (
+                      <p className="summary-text">{summary}</p>
+                    )}
+                  </div>
+                  <div className="summary-modal-footer">
+                    <span className="summary-powered">Powered by Google Gemini</span>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
 
             {/* Comment Input */}
             <div className="comment-input-card">

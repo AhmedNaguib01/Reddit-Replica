@@ -412,14 +412,13 @@ router.post('/:id/summarize', optionalAuth, async (req, res) => {
 
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // Try gemini-1.5-flash first, fallback models: gemini-pro, gemini-1.0-pro
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Prepare content for summarization
     const contentToSummarize = `Title: ${post.title}\n\nContent: ${post.content || 'No additional content'}`;
-    
-    const prompt = `Summarize this Reddit post in 2-3 concise sentences. Be direct and capture the main point:\n\n${contentToSummarize}`;
+    const prompt = `Summarize this Reddit post in 1 concise sentences. Be direct and capture the main point:\n\n${contentToSummarize}`;
 
+    // Cll Gemini API
     const result = await model.generateContent(prompt);
     const summary = result.response.text();
 
