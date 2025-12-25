@@ -1,3 +1,4 @@
+import { Linkedin, Github } from 'lucide-react';
 import StaticPage from './StaticPage';
 
 const AboutPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
@@ -25,16 +26,42 @@ const AboutPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
         <p><strong>Deployment:</strong> Vercel (Frontend), Railway (Backend)</p>
       </div>
       
-      <h2>Team Members</h2>
-      <ul>
-        <li>Ahmed Mohamed - Leader</li>
-        <li>Omar Montaser</li>
-        <li>Ferass Ahmed</li>
-        <li>Omar Tarek</li>
-        <li>Ahmed Elmahe</li>
-        <li>Hisham Elhwary</li>
-        <li>Mohamed Fotoh</li>
-      </ul>
+      <h2>Developer</h2>
+      <div className="highlight-box">
+        <p><strong>Ahmed Mohamed Naguib</strong></p>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+          <a 
+            href="https://www.linkedin.com/in/ahmed-naguib-075415328/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              color: '#0077B5',
+              textDecoration: 'none'
+            }}
+          >
+            <Linkedin size={20} />
+            <span>LinkedIn</span>
+          </a>
+          <a 
+            href="https://github.com/AhmedNaguib01" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              color: 'var(--text-primary)',
+              textDecoration: 'none'
+            }}
+          >
+            <Github size={20} />
+            <span>GitHub</span>
+          </a>
+        </div>
+      </div>
       
       <h2>Features</h2>
       <ul>
