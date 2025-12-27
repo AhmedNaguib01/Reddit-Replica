@@ -16,7 +16,7 @@ const AboutPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
       <h2>University Project</h2>
       <p>
         This project was developed as part of a Web Development course at 
-        <strong> Ain Shams University</strong>, Faculty of Computer and Information Sciences.
+        <strong> Ain Shams University</strong>, Faculty of Computer & AI Engineering. 
       </p>
       
       <h2>Tech Stack</h2>
