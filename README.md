@@ -1,6 +1,6 @@
 # Reddit Clone
 
-A full-stack Reddit clone featuring communities, posts, comments, voting, real-time chat, notifications, and custom feeds — built with modern web technologies.
+A full-stack Reddit clone featuring communities, posts, comments, voting, real-time chat, notifications, and custom feeds, built with modern web technologies.
 
 🔗 **Live Demo:** [reddit-replica-asu.vercel.app](https://reddit-replica-asu.vercel.app/)
 
@@ -32,7 +32,7 @@ A full-stack Reddit clone featuring communities, posts, comments, voting, real-t
 | **Backend** | Node.js, Express 5, MongoDB, Mongoose, JWT |
 | **Authentication** | Local + Google OAuth 2.0 |
 | **AI** | Google Gemini API |
-| **Deployment** | Vercel (Frontend), Railway (Backend) |
+| **Deployment** | Vercel (Frontend), Render (Backend) |
 
 ---
 
@@ -96,9 +96,9 @@ npm run dev
 
 ## ☁️ Deployment
 
-### Backend (Railway)
+### Backend (Render)
 
-1. Create a new project on [Railway](https://railway.app/)
+1. Create a new project on [Render](https://render.com/)
 2. Connect your GitHub repository and set the root directory to `server`
 3. Configure environment variables:
    - `MONGODB_URI`
@@ -114,7 +114,7 @@ npm run dev
 2. Connect your GitHub repository and set the root directory to `client`
 3. Select **Vite** as the framework preset
 4. Configure environment variables:
-   - `VITE_API_URL` *(Railway URL + `/api`)*
+   - `VITE_API_URL` *(Render URL + `/api`)*
    - `VITE_GOOGLE_CLIENT_ID`
 
 > ⚠️ **Important:** Add your Vercel domain to Google OAuth authorized origins in the Google Cloud Console.
