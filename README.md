@@ -1,161 +1,312 @@
-# Reddit Clone
+<div align="center">
 
-A full-stack Reddit clone featuring communities, posts, comments, voting, real-time chat, notifications, and custom feeds, built with modern web technologies.
+# Reddit Replica
 
-🔗 **Live Demo:** [reddit-replica-asu.vercel.app](https://reddit-replica-asu.vercel.app/)
+A full-stack Reddit clone with communities, threaded discussions, voting, direct messaging, and AI-assisted post summaries.
 
----
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-20.19%2B-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
+[![Deployed on Vercel](https://img.shields.io/badge/Vercel-deployed-000000?logo=vercel&logoColor=white)](https://reddit-replica-asu.vercel.app/)
 
-## ✨ Features
+**[Live Demo](https://reddit-replica-asu.vercel.app/)** · **[API Reference](server/docs/api/README.md)** · **[Architecture Docs](docs/)**
 
-| Category | Features |
-|----------|----------|
-| **Authentication** | Email/password registration, Google OAuth 2.0, password reset via email |
-| **Communities** | Create, join, leave, edit, and delete communities |
-| **Posts** | Text & image posts with full CRUD operations, upvote/downvote system |
-| **Comments** | Nested comment threads with voting support |
-| **User Profiles** | Customizable profiles with banners, bios, and karma tracking |
-| **Real-time Chat** | Direct messaging between users with reply support |
-| **Notifications** | Real-time alerts for upvotes, comments, replies, and follows |
-| **Custom Feeds** | Create personalized feeds from multiple communities |
-| **Search** | Search posts, communities, and users |
-| **Theming** | Dark/Light mode with system preference detection |
-| **AI Integration** | AI-powered post summarization using Google Gemini |
+</div>
 
 ---
 
-## 🛠️ Tech Stack
+## Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Scripts](#scripts)
+- [API Reference](#api-reference)
+- [Data Model](#data-model)
+- [Deployment](#deployment)
+- [Documentation](#documentation)
+- [License](#license)
+
+---
+
+## Overview
+
+Reddit Replica is a single-page React application backed by a REST API. Users
+register locally or through Google, create and join communities, publish text
+and image posts, vote, reply in nested comment threads, follow other users,
+message them directly, and group communities into custom feeds.
+
+The backend exposes **61 endpoints across 8 modules** and runs either as a
+long-lived Node process or as a Vercel serverless function from the same entry
+point.
+
+---
+
+## Features
+
+| Category | Description |
+|----------|-------------|
+| **Authentication** | Email/password registration, Google OAuth 2.0, JWT sessions, password reset by email |
+| **Communities** | Create, join, leave, edit, and delete communities with member counts and moderation by the creator |
+| **Posts** | Text and image posts with full CRUD, upvote/downvote, and save-for-later |
+| **Comments** | Arbitrarily nested comment threads with independent voting |
+| **Profiles** | Custom avatars, banners, bios, karma tracking, followers and following |
+| **Messaging** | One-to-one conversations with replies, soft deletion, and unread counts |
+| **Notifications** | In-app alerts for upvotes, comments, replies, and new followers |
+| **Custom Feeds** | Personalised feeds aggregating posts from several communities |
+| **Search** | Full-text search across posts, plus community and user lookup |
+| **AI Summaries** | One-sentence post summaries via the Google Gemini API |
+| **Theming** | Dark and light modes, persisted per browser |
+
+> Messaging and notifications refresh by polling on a visibility-aware interval
+> rather than over WebSockets — updates pause entirely while the tab is hidden.
+
+---
+
+## Tech Stack
 
 | Layer | Technologies |
 |-------|--------------|
-| **Frontend** | React 19, React Router, Vite, Lucide React |
-| **Backend** | Node.js, Express 5, MongoDB, Mongoose, JWT |
-| **Authentication** | Local + Google OAuth 2.0 |
-| **AI** | Google Gemini API |
-| **Deployment** | Vercel (Frontend & Backend) |
+| **Frontend** | React 19 (with the React Compiler), React Router 7, Vite 7, Lucide icons |
+| **Backend** | Node.js, Express 5, Mongoose 9, JSON Web Tokens |
+| **Database** | MongoDB (Atlas) |
+| **Auth** | Local credentials (bcrypt) + Google OAuth 2.0 |
+| **Services** | Google Gemini (summaries), SendGrid (transactional email) |
+| **Hosting** | Vercel — static frontend and serverless backend |
 
 ---
 
-## 🚀 Getting Started
+## Project Structure
+
+```
+Reddit-Replica/
+├── client/                     # React single-page application
+│   └── src/
+│       ├── components/         # Feature-grouped UI (post, comment, community, layout, …)
+│       ├── context/            # Auth, chat, toast, sidebar, loading providers
+│       ├── hooks/              # usePageTitle, usePolling
+│       ├── pages/              # One component per route
+│       ├── services/api.js     # Single API client with caching and deduplication
+│       └── styles/             # Per-component stylesheets
+│
+├── server/                     # Express REST API
+│   ├── api/index.js            # Vercel serverless entry point
+│   ├── config/database.js      # Cached Mongoose connection
+│   ├── middleware/auth.js      # JWT verification (required and optional)
+│   ├── models/                 # Mongoose schemas
+│   ├── routes/                 # One router per resource
+│   ├── scripts/                # Database seeding and index synchronisation
+│   ├── utils/                  # Formatting, notifications, caching, vote helpers
+│   ├── docs/                   # API and database documentation
+│   └── server.js               # App composition and middleware chain
+│
+└── docs/                       # Architecture and design documentation
+```
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js v18+
-- MongoDB (local or [MongoDB Atlas](https://www.mongodb.com/atlas))
-- Google OAuth credentials *(optional, for Google sign-in)*
-- Gemini API key *(optional, for AI summaries)*
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| **Node.js** | `^20.19.0` or `>=22.12.0` | Required by Vite 7 and Mongoose 9 |
+| **MongoDB** | Any recent version | Local instance or [MongoDB Atlas](https://www.mongodb.com/atlas) |
+| Google OAuth credentials | — | Optional, enables Google sign-in |
+| Gemini API key | — | Optional, enables AI summaries |
+| SendGrid API key | — | Optional, enables password-reset emails |
 
-### Backend Setup
-
-```bash
-cd server
-npm install
-```
-
-Create `server/.env`:
-
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_secret_key_here
-NODE_ENV=development
-GOOGLE_CLIENT_ID=your_google_client_id
-FRONTEND_URL=http://localhost:5173
-GEMINI_API_KEY=your_gemini_api_key
-```
-
-> 💡 Get your Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey). The AI Summary feature is optional — if not configured, the feature will be disabled.
-
-Start the server:
+### 1. Clone and install
 
 ```bash
-npm run dev
+git clone https://github.com/AhmedNaguib01/Reddit-Replica.git
+cd Reddit-Replica
+
+# Backend
+cd server && npm install
+
+# Frontend
+cd ../client && npm install
 ```
 
-### Frontend Setup
+### 2. Configure environment
+
+Copy `server/.env.example` to `server/.env` and fill in the values, then create
+`client/.env`. See [Environment Variables](#environment-variables) for the full
+reference.
 
 ```bash
-cd client
-npm install
+cd server && cp .env.example .env
 ```
 
-Create `client/.env`:
-
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
-```
-
-Start the development server:
+### 3. Seed sample data (optional)
 
 ```bash
-npm run dev
+cd server && npm run seed
+```
+
+> Destructive — `seed` clears every collection in the target database before
+> inserting sample users, communities, posts, and comments. Point `MONGODB_URI`
+> at a scratch database first. It prints working credentials when it finishes.
+
+### 4. Run both services
+
+```bash
+# Terminal 1 — API on http://localhost:5000
+cd server && npm run dev
+
+# Terminal 2 — app on http://localhost:5173
+cd client && npm run dev
 ```
 
 ---
 
-## ☁️ Deployment
+## Environment Variables
 
-### Backend (Vercel)
+### `server/.env`
 
-1. Create a new project on [Vercel](https://vercel.com/)
-2. Connect your GitHub repository and set the root directory to `server`
-3. Leave the framework preset as **Other** — `server/vercel.json` routes every
-   request to the Express app in `server/api/index.js`
-4. Configure environment variables (see `server/.env.example`):
-   - `MONGODB_URI`
-   - `JWT_SECRET`
-   - `NODE_ENV=production`
-   - `GOOGLE_CLIENT_ID`
-   - `FRONTEND_URL` *(your frontend Vercel URL)*
-   - `CLIENT_URL` *(same URL — used for password-reset links)*
-   - `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL` *(optional)*
-   - `GEMINI_API_KEY` *(optional)*
-5. Verify the deployment at `https://<backend>.vercel.app/api/health`
+| Variable | Required | Description |
+|----------|:--------:|-------------|
+| `MONGODB_URI` | Yes | MongoDB connection string |
+| `JWT_SECRET` | Yes | Secret used to sign JSON Web Tokens |
+| `PORT` | No | API port; defaults to `5000`. Ignored on Vercel |
+| `NODE_ENV` | No | `development` or `production`. Enables request logging when not production |
+| `FRONTEND_URL` | No | Frontend origin, added to the CORS allowlist |
+| `CLIENT_URL` | No | Frontend origin used to build password-reset links |
+| `GOOGLE_CLIENT_ID` | No | Enables Google sign-in verification |
+| `GEMINI_API_KEY` | No | Enables AI post summaries |
+| `SENDGRID_API_KEY` | No | Enables password-reset email delivery |
+| `SENDGRID_FROM_EMAIL` | No | Verified sender address for SendGrid |
 
-> 💡 MongoDB Atlas must allow connections from anywhere (`0.0.0.0/0`) since
-> Vercel functions do not have static outbound IPs.
+`http://localhost:5173` and `http://localhost:4173` are always allowed by CORS
+for local development and production-build previews.
 
-### Frontend (Vercel)
+### `client/.env`
 
-1. Create a new project on [Vercel](https://vercel.com/)
-2. Connect your GitHub repository and set the root directory to `client`
-3. Select **Vite** as the framework preset
-4. Configure environment variables:
-   - `VITE_API_URL` *(backend Vercel URL + `/api`)*
-   - `VITE_GOOGLE_CLIENT_ID`
-
-> ⚠️ **Important:** Add your Vercel domain to Google OAuth authorized origins in the Google Cloud Console.
+| Variable | Required | Description |
+|----------|:--------:|-------------|
+| `VITE_API_URL` | Yes | API base URL, including the `/api` suffix |
+| `VITE_GOOGLE_CLIENT_ID` | No | Google OAuth client ID for the sign-in button |
 
 ---
 
-## 📜 Available Scripts
+## Scripts
 
 ### Server
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm start` | Start production server |
-| `npm run seed` | Seed database with sample data |
+| `npm run dev` | Start the API with nodemon hot reload |
+| `npm start` | Start the API in production mode |
+| `npm run seed` | Reset the target database and insert sample data |
+| `npm run sync-indexes` | Align MongoDB indexes with the schemas, dropping obsolete ones |
 
 ### Client
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Create production build |
-| `npm run preview` | Preview production build locally |
+| `npm run dev` | Start the Vite dev server |
+| `npm run build` | Produce a production build in `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | Run ESLint across the project |
+
+> Run `npm run sync-indexes` after changing any index declaration in
+> `server/models/`. Mongoose creates new indexes automatically but never removes
+> ones you have deleted from a schema.
 
 ---
 
-## 📄 License
+## API Reference
 
-This project was developed as a university project at Ain Shams University.
+Base URL: `http://localhost:5000/api` · Authentication: `Authorization: Bearer <token>`
+
+| Module | Endpoints | Documentation |
+|--------|:---------:|---------------|
+| Authentication | 8 | [AUTH.md](server/docs/api/AUTH.md) |
+| Posts | 11 | [POSTS.md](server/docs/api/POSTS.md) |
+| Comments | 6 | [COMMENTS.md](server/docs/api/COMMENTS.md) |
+| Communities | 8 | [COMMUNITIES.md](server/docs/api/COMMUNITIES.md) |
+| Users | 6 | [USERS.md](server/docs/api/USERS.md) |
+| Custom Feeds | 10 | [CUSTOM_FEEDS.md](server/docs/api/CUSTOM_FEEDS.md) |
+| Chats | 8 | [CHATS.md](server/docs/api/CHATS.md) |
+| Notifications | 4 | [NOTIFICATIONS.md](server/docs/api/NOTIFICATIONS.md) |
+
+`GET /api/health` returns service status and is unauthenticated.
 
 ---
 
-## 👤 Author
+## Data Model
+
+Nine Mongoose collections. Full field definitions live in
+[DATABASE_SCHEMA.md](server/docs/DATABASE_SCHEMA.md), with a PlantUML diagram in
+[database-schema.puml](server/docs/database-schema.puml).
+
+| Collection | Purpose |
+|------------|---------|
+| `User` | Credentials, profile, karma |
+| `Community` | Community metadata and member counts |
+| `Post` | Posts, denormalised author and community names, vote tallies |
+| `Comment` | Comment tree via `parentComment` and `depth` |
+| `Vote` | One document per user/target pair, uniquely indexed |
+| `UserActivity` | Saved posts, joined and recent communities, followers, following |
+| `Notification` | Per-user notification feed |
+| `CustomFeed` | User-defined community groupings |
+| `Chat` | Conversations with embedded message subdocuments |
+
+---
+
+## Deployment
+
+Both halves deploy to Vercel as separate projects from the same repository.
+
+### Backend
+
+1. Create a Vercel project and set the root directory to `server`.
+2. Keep the framework preset as **Other** — `server/vercel.json` rewrites every
+   request to the Express app exported from `server/api/index.js`.
+3. Add the environment variables listed [above](#serverenv), with
+   `NODE_ENV=production`.
+4. Verify at `https://<backend>.vercel.app/api/health`.
+
+> MongoDB Atlas must allow connections from anywhere (`0.0.0.0/0`); Vercel
+> functions have no static outbound IP addresses.
+
+### Frontend
+
+1. Create a second Vercel project with the root directory set to `client`.
+2. Select the **Vite** framework preset.
+3. Set `VITE_API_URL` to the backend URL plus `/api`, and `VITE_GOOGLE_CLIENT_ID`.
+
+> Add every deployed origin to the authorised JavaScript origins of your Google
+> OAuth client, otherwise the sign-in button fails to render.
+
+---
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [High-Level Architecture](docs/01-HIGH-LEVEL-ARCHITECTURE.md) | System design and request lifecycle |
+| [Repository Structure](docs/02-REPOSITORY-STRUCTURE.md) | Directory-by-directory tour |
+| [Frontend Architecture](docs/03-FRONTEND-ARCHITECTURE.md) | Component hierarchy, state, and routing |
+| [Backend API Design](docs/04-BACKEND-API-DESIGN.md) | Routing, middleware, and error handling |
+| [API Reference](server/docs/api/README.md) | Endpoint-level request and response formats |
+| [Database Schema](server/docs/DATABASE_SCHEMA.md) | Collections, fields, and indexes |
+
+---
+
+## License
+
+Developed as a university project for CSE343 Web Development at Ain Shams
+University.
+
+## Author
 
 **Ahmed Mohamed Naguib**
 
