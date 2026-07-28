@@ -8,7 +8,11 @@ import { useToast } from '../context/ToastContext';
 import Sidebar from '../components/layout/Sidebar';
 import ConfirmModal from '../components/common/ConfirmModal';
 import usePageTitle from '../hooks/usePageTitle';
+import usePolling from '../hooks/usePolling';
 import '../styles/ChatPage.css';
+
+const CHAT_LIST_POLL_INTERVAL = 10000;
+const MESSAGE_POLL_INTERVAL = 2000;
 
 const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
   const { currentUser } = useAuth();
@@ -31,13 +35,13 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
-  const pollIntervalRef = useRef(null);
   const isUserScrolledUp = useRef(false);
   const lastMessageCount = useRef(0);
+  // Hold the latest fetchers so the pollers below stay stable across renders
+  const fetchChatsRef = useRef(null);
+  const fetchMessagesRef = useRef(null);
 
   usePageTitle('Messages');
-
-  const chatListPollRef = useRef(null);
 
   // Fetch all chats and handle navigation state
   useEffect(() => {
@@ -70,29 +74,27 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
     };
 
     fetchChats(true);
-
-    // Poll for new chats every 3 seconds (for receiving new conversations)
-    chatListPollRef.current = setInterval(() => fetchChats(false), 3000);
-
-    return () => {
-      if (chatListPollRef.current) {
-        clearInterval(chatListPollRef.current);
-      }
-    };
+    fetchChatsRef.current = () => fetchChats(false);
   }, [currentUser, location.state]);
+
+  // New conversations are rare compared to new messages, so the list refreshes
+  // less often than the open thread does. Both pause when the tab is hidden.
+  const pollChatList = useCallback(() => fetchChatsRef.current?.(), []);
+  usePolling(pollChatList, CHAT_LIST_POLL_INTERVAL, !!currentUser);
 
   // Fetch messages when chat is selected
   useEffect(() => {
     if (!selectedChat) {
       setMessages([]);
       lastMessageCount.current = 0;
+      fetchMessagesRef.current = null;
       return;
     }
 
     const fetchMessages = async () => {
       // Don't fetch while sending to prevent flicker
       if (sending) return;
-      
+
       try {
         const data = await chatsAPI.getMessages(selectedChat.id);
         // Only update if there are new messages to prevent unnecessary re-renders
@@ -115,16 +117,13 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
     };
 
     fetchMessages();
-
-    // Poll for new messages every 2 seconds (reduced frequency)
-    pollIntervalRef.current = setInterval(fetchMessages, 2000);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
+    fetchMessagesRef.current = fetchMessages;
   }, [selectedChat, sending]);
+
+  // The open conversation keeps its fast refresh so chat still feels live, but
+  // it no longer runs in a background tab
+  const pollMessages = useCallback(() => fetchMessagesRef.current?.(), []);
+  usePolling(pollMessages, MESSAGE_POLL_INTERVAL, !!selectedChat);
 
   // Handle scroll detection
   const handleScroll = useCallback(() => {
@@ -405,7 +404,7 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
                     onClick={() => handleStartChat(user.username)}
                   >
                     {user.avatar ? (
-                      <img src={user.avatar} alt={user.username} className="chat-avatar-small" />
+                      <img src={user.avatar} alt={user.username} className="chat-avatar-small" loading="lazy" decoding="async" />
                     ) : (
                       <div className="chat-avatar-small chat-avatar-placeholder">
                         {(user.displayName || user.username).charAt(0).toUpperCase()}
@@ -438,7 +437,7 @@ const ChatPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
                   onClick={() => setSelectedChat(chat)}
                 >
                   {chat.otherUserAvatar ? (
-                    <img src={chat.otherUserAvatar} alt={chat.otherUserDisplayName || chat.otherUser} className="chat-avatar" />
+                    <img src={chat.otherUserAvatar} alt={chat.otherUserDisplayName || chat.otherUser} className="chat-avatar" loading="lazy" decoding="async" />
                   ) : (
                     <div className="chat-avatar chat-avatar-placeholder">
                       {(chat.otherUserDisplayName || chat.otherUser)?.charAt(0).toUpperCase()}

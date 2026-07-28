@@ -4,12 +4,11 @@ const { authenticateToken } = require('../middleware/auth');
 const CustomFeed = require('../models/CustomFeed');
 const Community = require('../models/Community');
 const Post = require('../models/Post');
-const { formatCustomFeed, formatPosts } = require('../utils/helpers');
+const User = require('../models/User');
+const UserActivity = require('../models/UserActivity');
+const { formatCustomFeed, formatPosts, escapeRegex, normalizeName } = require('../utils/helpers');
 
 const router = express.Router();
-
-// Helper to escape regex special characters
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // GET /api/custom-feeds - Get user's custom feeds
 router.get('/', authenticateToken, async (req, res) => {
@@ -32,11 +31,11 @@ router.get('/', authenticateToken, async (req, res) => {
 // GET /api/custom-feeds/user/:username - Get public feeds for a user's profile
 router.get('/user/:username', async (req, res) => {
   try {
-    const User = require('../models/User');
-    const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
-    }).select('_id').lean();
-    
+    const user = await User.findOne({ username: normalizeName(req.params.username) })
+      .select('_id')
+      .lean();
+
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -219,9 +218,13 @@ router.put('/:id/favorite', authenticateToken, async (req, res) => {
 router.post('/:id/communities', authenticateToken, async (req, res) => {
   try {
     const { communityId } = req.body;
-    const UserActivity = require('../models/UserActivity');
-    
-    const feed = await CustomFeed.findById(req.params.id);
+
+    // Feed, community and membership are independent lookups
+    const [feed, community, userActivity] = await Promise.all([
+      CustomFeed.findById(req.params.id),
+      Community.exists({ _id: communityId }),
+      UserActivity.findOne({ user: req.user.id }).select('joinedCommunities').lean()
+    ]);
 
     if (!feed) {
       return res.status(404).json({ message: 'Custom feed not found' });
@@ -231,19 +234,15 @@ router.post('/:id/communities', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    const community = await Community.findById(communityId).lean();
     if (!community) {
       return res.status(404).json({ message: 'Community not found' });
     }
 
-    // Check if user has joined this community
-    const userActivity = await UserActivity.findOne({ user: req.user.id })
-      .select('joinedCommunities')
-      .lean();
     const isJoined = userActivity?.joinedCommunities?.some(
       c => c.toString() === communityId
     );
-    
+
+
     if (!isJoined) {
       return res.status(403).json({ message: 'You must join this community before adding it to your feed' });
     }

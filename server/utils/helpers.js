@@ -1,3 +1,12 @@
+// Escapes regex metacharacters so user input can be used inside a RegExp
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Usernames and community names are stored lowercase (schema `lowercase: true`),
+// so callers can normalise the input and do an exact match instead of a
+// case-insensitive regex. Regex lookups cannot use the unique index and force a
+// collection scan on every profile view, login and mention.
+const normalizeName = (name) => String(name ?? '').trim().toLowerCase();
+
 const getTimeAgo = (date) => {
   const seconds = Math.floor((Date.now() - date) / 1000);
   
@@ -104,8 +113,10 @@ const formatUser = (user) => {
   return formatted;
 };
 
-module.exports = { 
-  getTimeAgo, 
+module.exports = {
+  escapeRegex,
+  normalizeName,
+  getTimeAgo,
   formatCount,
   getDefaultAvatar,
   ensureAvatar,

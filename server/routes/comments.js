@@ -5,76 +5,31 @@ const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const Vote = require('../models/Vote');
 const User = require('../models/User');
-
 const UserActivity = require('../models/UserActivity');
 const { notifyPostComment, notifyCommentReply } = require('../utils/notifications');
-const { formatComment } = require('../utils/helpers');
+const { formatComment, normalizeName } = require('../utils/helpers');
+const { attachCommentVoteInfo } = require('../utils/votes');
 
 const router = express.Router();
 
-// Helper to add user vote info to comments
-const addUserVoteInfo = async (comments, userId) => {
-  if (!userId) return comments;
-  
-  const commentIds = [];
-  const collectIds = (cmts) => {
-    cmts.forEach(c => {
-      commentIds.push(c._id || c.id);
-      if (c.replies && c.replies.length > 0) {
-        collectIds(c.replies);
-      }
-    });
-  };
-  collectIds(comments);
-
-  const votes = await Vote.find({
-    user: userId,
-    target: { $in: commentIds },
-    targetType: 'comment'
-  });
-
-  const voteMap = {};
-  votes.forEach(v => {
-    voteMap[v.target.toString()] = v.voteType === 1 ? 'up' : 'down';
-  });
-
-  const addVotes = (cmts) => {
-    cmts.forEach(c => {
-      const id = (c._id || c.id).toString();
-      c.userVote = voteMap[id] || null;
-      if (c.replies && c.replies.length > 0) {
-        addVotes(c.replies);
-      }
-    });
-  };
-  addVotes(comments);
-
-  return comments;
-};
+const MAX_COMMENTS_PER_POST = 500;
 
 // Helper to build comment tree from lean documents
-const buildCommentTreeLean = (comments) => {
-  const commentMap = {};
+const buildCommentTree = (comments) => {
+  const commentMap = new Map();
   const roots = [];
 
-  // Create map with formatted data
   comments.forEach(comment => {
-    commentMap[comment._id.toString()] = {
-      ...formatComment(comment),
-      replies: []
-    };
+    commentMap.set(comment._id.toString(), { ...formatComment(comment), replies: [] });
   });
 
-  // Build tree
   comments.forEach(comment => {
-    const commentObj = commentMap[comment._id.toString()];
-    if (comment.parentComment) {
-      const parent = commentMap[comment.parentComment.toString()];
-      if (parent) {
-        parent.replies.push(commentObj);
-      }
+    const node = commentMap.get(comment._id.toString());
+    const parent = comment.parentComment && commentMap.get(comment.parentComment.toString());
+    if (parent) {
+      parent.replies.push(node);
     } else {
-      roots.push(commentObj);
+      roots.push(node);
     }
   });
 
@@ -85,19 +40,21 @@ const buildCommentTreeLean = (comments) => {
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const { postId } = req.query;
-    
+
     if (!postId) {
       return res.status(400).json({ message: 'postId is required' });
     }
 
+    // Capped so a runaway thread cannot return an unbounded payload. Replies
+    // are nested client-side, so the whole thread has to be fetched together.
     const comments = await Comment.find({ post: postId })
       .sort({ createdAt: 1 })
-      .lean(); // Use lean for faster read-only queries
+      .limit(MAX_COMMENTS_PER_POST)
+      .lean();
 
-    const tree = buildCommentTreeLean(comments);
-    const treeWithVotes = await addUserVoteInfo(tree, req.user?.id);
+    const tree = buildCommentTree(comments);
 
-    res.status(200).json(treeWithVotes);
+    res.status(200).json(await attachCommentVoteInfo(tree, req.user?.id));
   } catch (error) {
     console.error('Get comments error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -107,15 +64,12 @@ router.get('/', optionalAuth, async (req, res) => {
 // GET /api/comments/user/:username - Get comments by user
 router.get('/user/:username', async (req, res) => {
   try {
-    const comments = await Comment.find({ authorUsername: req.params.username })
+    const comments = await Comment.find({ authorUsername: normalizeName(req.params.username) })
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
 
-    // Format lean documents
-    const formattedComments = comments.map(formatComment);
-
-    res.status(200).json(formattedComments);
+    res.status(200).json(comments.map(formatComment));
   } catch (error) {
     console.error('Get user comments error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -134,36 +88,32 @@ router.post(
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: errors.array()[0].msg,
-          errors: errors.array() 
+          errors: errors.array()
         });
       }
 
       const { postId, content, parentId } = req.body;
 
-      // Verify post exists
-      const post = await Post.findById(postId);
+      // The post body can be a base64 image, so only the fields needed for the
+      // membership check and the notification are selected. The membership
+      // lookup and the parent comment are fetched alongside it.
+      const [post, userActivity, parentComment] = await Promise.all([
+        Post.findById(postId).select('author community title').lean(),
+        UserActivity.findOne({ user: req.user.id }).select('joinedCommunities').lean(),
+        parentId ? Comment.findById(parentId).select('author depth').lean() : null
+      ]);
+
       if (!post) {
         return res.status(404).json({ message: 'Post not found' });
       }
 
-      // Check if user is a member of the community
-      const userActivity = await UserActivity.findOne({ user: req.user.id });
       const isMember = userActivity?.joinedCommunities?.some(
         c => c.toString() === post.community.toString()
       );
       if (!isMember) {
         return res.status(403).json({ message: 'You must join this community to comment' });
-      }
-
-      // Calculate depth if replying
-      let depth = 0;
-      if (parentId) {
-        const parentComment = await Comment.findById(parentId);
-        if (parentComment) {
-          depth = parentComment.depth + 1;
-        }
       }
 
       const newComment = await Comment.create({
@@ -172,26 +122,17 @@ router.post(
         author: req.user.id,
         authorUsername: req.user.username,
         parentComment: parentId || null,
-        depth
+        depth: parentComment ? parentComment.depth + 1 : 0
       });
 
-      // Increment post comment count
-      post.commentCount++;
-      await post.save();
+      // Counter bump and notification are independent of each other
+      await Promise.all([
+        Post.updateOne({ _id: postId }, { $inc: { commentCount: 1 } }),
+        parentComment
+          ? notifyCommentReply(parentComment, post, req.user)
+          : notifyPostComment(post, req.user)
+      ]);
 
-      // Create notifications
-      if (parentId) {
-        // This is a reply to another comment
-        const parentComment = await Comment.findById(parentId);
-        if (parentComment) {
-          await notifyCommentReply(parentComment, post, req.user);
-        }
-      } else {
-        // This is a top-level comment on the post
-        await notifyPostComment(post, req.user);
-      }
-
-      // Format the comment before sending response
       res.status(201).json(formatComment(newComment.toObject()));
     } catch (error) {
       console.error('Create comment error:', error);
@@ -204,7 +145,7 @@ router.post(
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const comment = await Comment.findById(req.params.id);
-    
+
     if (!comment) {
       return res.status(404).json({ message: 'Comment not found' });
     }
@@ -214,7 +155,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     const { content } = req.body;
-    
+
     if (!content || !content.trim()) {
       return res.status(400).json({ message: 'Content is required' });
     }
@@ -225,7 +166,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     await comment.save();
 
-    // Format the comment before sending response
     res.status(200).json(formatComment(comment.toObject()));
   } catch (error) {
     console.error('Update comment error:', error);
@@ -236,8 +176,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // DELETE /api/comments/:id - Delete comment (protected)
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const comment = await Comment.findById(req.params.id);
-    
+    const comment = await Comment.findById(req.params.id).select('author post').lean();
+
     if (!comment) {
       return res.status(404).json({ message: 'Comment not found' });
     }
@@ -246,26 +186,34 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete this comment' });
     }
 
-    // Delete comment and all replies
-    const deleteCommentAndReplies = async (commentId) => {
-      const replies = await Comment.find({ parentComment: commentId });
-      for (const reply of replies) {
-        await deleteCommentAndReplies(reply._id);
-      }
-      await Comment.findByIdAndDelete(commentId);
-      await Vote.deleteMany({ target: commentId, targetType: 'comment' });
-    };
+    // Collect the whole reply subtree breadth-first, one query per level,
+    // instead of two queries per individual comment. The deletes then run as
+    // two bulk operations.
+    const idsToDelete = [comment._id];
+    let frontier = [comment._id];
 
-    await deleteCommentAndReplies(req.params.id);
-
-    // Decrement post comment count
-    const post = await Post.findById(comment.post);
-    if (post) {
-      post.commentCount = Math.max(0, post.commentCount - 1);
-      await post.save();
+    while (frontier.length) {
+      const replies = await Comment.find({ parentComment: { $in: frontier } })
+        .select('_id')
+        .lean();
+      frontier = replies.map(r => r._id);
+      idsToDelete.push(...frontier);
     }
 
-    res.status(200).json({ message: 'Comment deleted successfully' });
+    await Promise.all([
+      Comment.deleteMany({ _id: { $in: idsToDelete } }),
+      Vote.deleteMany({ target: { $in: idsToDelete }, targetType: 'comment' }),
+      // The post's counter drops by the whole subtree, not just one comment
+      Post.updateOne({ _id: comment.post }, { $inc: { commentCount: -idsToDelete.length } })
+    ]);
+
+    // Guard against the counter going negative from older inconsistent data
+    await Post.updateOne(
+      { _id: comment.post, commentCount: { $lt: 0 } },
+      { $set: { commentCount: 0 } }
+    );
+
+    res.status(200).json({ message: 'Comment deleted successfully', deletedCount: idsToDelete.length });
   } catch (error) {
     console.error('Delete comment error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -278,14 +226,12 @@ router.post('/:id/vote', authenticateToken, async (req, res) => {
     const { vote } = req.body;
     const commentId = req.params.id;
 
-    const comment = await Comment.findById(commentId);
+    const comment = await Comment.findById(commentId).select('author').lean();
     if (!comment) {
       return res.status(404).json({ message: 'Comment not found' });
     }
 
     const voteValue = vote === 'up' ? 1 : -1;
-    let userVote = null;
-    let karmaChange = 0;
 
     const existingVote = await Vote.findOne({
       user: req.user.id,
@@ -293,60 +239,65 @@ router.post('/:id/vote', authenticateToken, async (req, res) => {
       targetType: 'comment'
     });
 
-    if (existingVote) {
-      if (existingVote.voteType === voteValue) {
-        // Remove vote
-        await Vote.findByIdAndDelete(existingVote._id);
-        if (voteValue === 1) {
-          comment.upvotes--;
-          karmaChange = -1;
-        } else {
-          comment.downvotes--;
-          karmaChange = 1;
-        }
-        userVote = null;
+    // Same atomic-delta approach as post voting
+    let upvoteDelta = 0;
+    let downvoteDelta = 0;
+    let karmaChange = 0;
+    let userVote = null;
+
+    if (existingVote && existingVote.voteType === voteValue) {
+      if (voteValue === 1) {
+        upvoteDelta = -1;
+        karmaChange = -1;
       } else {
-        // Change vote
-        if (existingVote.voteType === 1) {
-          comment.upvotes--;
-          comment.downvotes++;
-          karmaChange = -2;
-        } else {
-          comment.downvotes--;
-          comment.upvotes++;
-          karmaChange = 2;
-        }
-        existingVote.voteType = voteValue;
-        await existingVote.save();
-        userVote = vote;
+        downvoteDelta = -1;
+        karmaChange = 1;
       }
+      await Vote.deleteOne({ _id: existingVote._id });
+    } else if (existingVote) {
+      if (existingVote.voteType === 1) {
+        upvoteDelta = -1;
+        downvoteDelta = 1;
+        karmaChange = -2;
+      } else {
+        downvoteDelta = -1;
+        upvoteDelta = 1;
+        karmaChange = 2;
+      }
+      await Vote.updateOne({ _id: existingVote._id }, { $set: { voteType: voteValue } });
+      userVote = vote;
     } else {
-      // New vote
+      if (voteValue === 1) {
+        upvoteDelta = 1;
+        karmaChange = 1;
+      } else {
+        downvoteDelta = 1;
+        karmaChange = -1;
+      }
       await Vote.create({
         user: req.user.id,
         target: commentId,
         targetType: 'comment',
         voteType: voteValue
       });
-      if (voteValue === 1) {
-        comment.upvotes++;
-        karmaChange = 1;
-      } else {
-        comment.downvotes++;
-        karmaChange = -1;
-      }
       userVote = vote;
     }
 
-    await comment.save();
+    const isOwnComment = comment.author.toString() === req.user.id;
 
-    // Update comment author's karma (don't update if voting on own comment)
-    if (comment.author.toString() !== req.user.id && karmaChange !== 0) {
-      await User.findByIdAndUpdate(comment.author, { $inc: { karma: karmaChange } });
-    }
+    const [updatedComment] = await Promise.all([
+      Comment.findByIdAndUpdate(
+        commentId,
+        { $inc: { upvotes: upvoteDelta, downvotes: downvoteDelta } },
+        { new: true, projection: 'upvotes downvotes' }
+      ).lean(),
+      !isOwnComment && karmaChange !== 0
+        ? User.updateOne({ _id: comment.author }, { $inc: { karma: karmaChange } })
+        : null
+    ]);
 
     res.status(200).json({
-      voteCount: comment.upvotes - comment.downvotes,
+      voteCount: updatedComment.upvotes - updatedComment.downvotes,
       userVote
     });
   } catch (error) {

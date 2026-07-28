@@ -31,7 +31,12 @@ Get all posts, optionally filtered by community.
 **Query Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `subreddit` | string | No | Filter by community name |
+| `subreddit` | string | No | Filter by community name (case-insensitive) |
+| `limit` | number | No | Posts to return. Defaults to 50, clamped to 100 |
+| `skip` | number | No | Posts to skip, for paging. Defaults to 0 |
+
+`limit` and `skip` are also accepted by `GET /posts/user/saved` and
+`GET /posts/by-user/:username`.
 
 **Success Response (200):**
 ```json
@@ -63,7 +68,11 @@ Get all posts, optionally filtered by community.
 
 ## GET /posts/search 🔑
 
-Search posts by title, content, author, or community.
+Search posts by title, author, or community. Matches whole words and returns at
+most 30 results, newest first.
+
+Post *content* is not searched: image posts store base64 data in that field, so
+indexing it produced an enormous index and matched meaningless byte sequences.
 
 **Query Parameters:**
 | Parameter | Type | Required | Description |
@@ -307,8 +316,7 @@ Authorization: Bearer <token>
 | 404 | Post not found |
 
 **Notes:**
-- Also deletes all associated votes
-- Comments are NOT deleted (orphaned)
+- Cascades to the post's votes, its comments, and any user's saved-post list
 
 ---
 

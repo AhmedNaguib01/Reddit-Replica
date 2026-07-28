@@ -96,7 +96,7 @@ const AddCommunitiesModal = ({ isOpen, onClose, feed, onCommunitiesUpdated }) =>
                   className={`community-item ${isInFeed ? 'in-feed' : ''}`}
                   onClick={() => !isAdding && handleToggleCommunity(community)}
                 >
-                  <img src={community.iconUrl} alt="" className="community-icon" />
+                  <img src={community.iconUrl} alt="" className="community-icon" loading="lazy" decoding="async" />
                   <div className="community-info">
                     <span className="community-name">r/{community.name}</span>
                     <span className="community-members">{community.members || community.memberCount} members</span>

@@ -6,16 +6,13 @@ const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const Community = require('../models/Community');
 const CustomFeed = require('../models/CustomFeed');
-const Vote = require('../models/Vote');
 const Notification = require('../models/Notification');
 const Chat = require('../models/Chat');
 const { notifyFollow } = require('../utils/notifications');
-const { getTimeAgo, ensureAvatar, ensureAvatars } = require('../utils/helpers');
+const { getTimeAgo, ensureAvatar, ensureAvatars, escapeRegex, normalizeName } = require('../utils/helpers');
+const { buildVoteMap } = require('../utils/votes');
 
 const router = express.Router();
-
-// Helper to escape regex special characters
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // GET /api/users/search - Search users by username or displayName
 router.get('/search', async (req, res) => {
@@ -118,12 +115,12 @@ router.put('/profile', authenticateToken, async (req, res) => {
     const newUsername = username ? username.trim().toLowerCase() : oldUsername;
 
     // Check if username is taken (only if changing)
-    if (username && newUsername.toLowerCase() !== oldUsername.toLowerCase()) {
-      const userWithSameName = await User.findOne({ 
-        username: { $regex: new RegExp(`^${escapeRegex(newUsername)}$`, 'i') },
+    if (username && newUsername !== oldUsername) {
+      const userWithSameName = await User.exists({
+        username: newUsername,
         _id: { $ne: req.user.id }
-      }).lean();
-      
+      });
+
       if (userWithSameName) {
         return res.status(409).json({ message: 'Username already taken' });
       }
@@ -187,10 +184,8 @@ router.put('/profile', authenticateToken, async (req, res) => {
 // GET /api/users/:username/profile - Get complete user profile data in one request (optimized)
 router.get('/:username/profile', optionalAuth, async (req, res) => {
   try {
-    const usernameRegex = new RegExp(`^${escapeRegex(req.params.username)}$`, 'i');
-    
-    // Fetch user first to get the ID
-    const user = await User.findOne({ username: usernameRegex })
+    // Usernames are stored lowercase, so this is an indexed exact match
+    const user = await User.findOne({ username: normalizeName(req.params.username) })
       .select('-password -passwordResetToken -passwordResetExpires -googleId')
       .lean();
     
@@ -201,75 +196,51 @@ router.get('/:username/profile', optionalAuth, async (req, res) => {
     const userId = user._id;
     const isOwnProfile = req.user && req.user.id === userId.toString();
 
-    // Build all queries upfront for maximum parallelization
-    const queries = [
-      // User's activity - only populate what we need (limit followers/following for performance)
+    // Everything that does not depend on another result goes out at once
+    const [activity, posts, comments, customFeeds, currentUserActivity] = await Promise.all([
+      // Followers/following are capped - a popular account should not drag
+      // hundreds of avatars into a profile view
       UserActivity.findOne({ user: userId })
+        .select('followers following savedPosts')
         .populate({ path: 'followers', select: 'username displayName avatar', options: { limit: 100 } })
         .populate({ path: 'following', select: 'username displayName avatar', options: { limit: 100 } })
         .lean(),
-      
-      // User's posts - only fetch needed fields
+
       Post.find({ author: userId })
         .select('title type content authorUsername communityName upvotes downvotes commentCount createdAt')
         .sort({ createdAt: -1 })
         .limit(25)
         .lean(),
-      
-      // User's comments - only fetch needed fields
+
       Comment.find({ author: userId })
         .select('content post authorUsername upvotes downvotes createdAt')
         .sort({ createdAt: -1 })
         .limit(25)
         .lean(),
-      
-      // User's public custom feeds
+
       CustomFeed.find({ creator: userId, isPrivate: false, showOnProfile: true })
         .select('name description communities isPrivate')
         .populate('communities', 'name iconUrl')
         .sort({ name: 1 })
         .limit(10)
         .lean(),
-    ];
 
-    // Add vote/follow queries if user is logged in
-    if (req.user) {
-      if (!isOwnProfile) {
-        queries.push(UserActivity.findOne({ user: req.user.id }).select('following').lean());
-      } else {
-        queries.push(null); // placeholder
-      }
-    } else {
-      queries.push(null);
-    }
+      // Only needed to answer "am I following this person"
+      req.user && !isOwnProfile
+        ? UserActivity.findOne({ user: req.user.id }).select('following').lean()
+        : null
+    ]);
 
-    // Execute all queries in parallel
-    const [activity, posts, comments, customFeeds, currentUserActivity] = await Promise.all(queries);
+    // Votes need the post ids, so this is the one query that has to come second.
+    // Saved posts do not need a lookup at all on an own-profile view - `activity`
+    // is already the current user's document.
+    const voteMap = req.user && posts.length
+      ? await buildVoteMap(req.user.id, posts.map(p => p._id), 'post')
+      : {};
 
-    // Get vote info and saved posts in parallel (only if logged in)
-    let voteMap = {};
-    let savedPostIds = new Set();
-    
-    if (req.user && posts.length > 0) {
-      const postIds = posts.map(p => p._id);
-      const voteQuery = Vote.find({
-        user: req.user.id,
-        target: { $in: postIds },
-        targetType: 'post'
-      }).select('target voteType').lean();
-
-      if (isOwnProfile) {
-        const [votes, savedActivity] = await Promise.all([
-          voteQuery,
-          UserActivity.findOne({ user: req.user.id }).select('savedPosts').lean()
-        ]);
-        votes.forEach(v => { voteMap[v.target.toString()] = v.voteType === 1 ? 'up' : 'down'; });
-        savedPostIds = new Set(savedActivity?.savedPosts?.map(id => id.toString()) || []);
-      } else {
-        const votes = await voteQuery;
-        votes.forEach(v => { voteMap[v.target.toString()] = v.voteType === 1 ? 'up' : 'down'; });
-      }
-    }
+    const savedPostIds = isOwnProfile
+      ? new Set(activity?.savedPosts?.map(id => id.toString()) || [])
+      : new Set();
 
     // Format posts with vote info
     const formattedPosts = posts.map(post => ({
@@ -353,10 +324,11 @@ router.get('/:username/profile', optionalAuth, async (req, res) => {
 // POST /api/users/:username/follow - Follow/unfollow user (protected)
 router.post('/:username/follow', authenticateToken, async (req, res) => {
   try {
-    const userToFollow = await User.findOne({ 
-      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
-    }).select('_id username').lean();
-    
+    const userToFollow = await User.findOne({ username: normalizeName(req.params.username) })
+      .select('_id username')
+      .lean();
+
+
     if (!userToFollow) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -365,44 +337,34 @@ router.post('/:username/follow', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Cannot follow yourself' });
     }
 
-    // Get or create activity for both users in parallel
-    let [followerActivity, followingActivity] = await Promise.all([
-      UserActivity.findOne({ user: req.user.id }),
-      UserActivity.findOne({ user: userToFollow._id })
+    // Only the one array is needed to decide the direction of the toggle
+    const followerActivity = await UserActivity.findOne({ user: req.user.id })
+      .select('following')
+      .lean();
+
+    const following = !followerActivity?.following?.some(
+      id => id.toString() === userToFollow._id.toString()
+    );
+
+    // $addToSet / $pull keep both sides of the relationship consistent even if
+    // two follow requests race, which the previous array splice could not.
+    await Promise.all([
+      UserActivity.updateOne(
+        { user: req.user.id },
+        following
+          ? { $addToSet: { following: userToFollow._id } }
+          : { $pull: { following: userToFollow._id } },
+        { upsert: true }
+      ),
+      UserActivity.updateOne(
+        { user: userToFollow._id },
+        following
+          ? { $addToSet: { followers: req.user.id } }
+          : { $pull: { followers: req.user.id } },
+        { upsert: true }
+      ),
+      following ? notifyFollow(userToFollow._id, req.user) : null
     ]);
-
-    if (!followerActivity) {
-      followerActivity = await UserActivity.create({ user: req.user.id });
-    }
-    if (!followingActivity) {
-      followingActivity = await UserActivity.create({ user: userToFollow._id });
-    }
-
-    const index = followerActivity.following.indexOf(userToFollow._id);
-    let following;
-
-    if (index > -1) {
-      // Unfollow
-      followerActivity.following.splice(index, 1);
-      const followerIndex = followingActivity.followers.indexOf(req.user.id);
-      if (followerIndex > -1) {
-        followingActivity.followers.splice(followerIndex, 1);
-      }
-      following = false;
-    } else {
-      // Follow
-      followerActivity.following.push(userToFollow._id);
-      if (!followingActivity.followers.includes(req.user.id)) {
-        followingActivity.followers.push(req.user.id);
-      }
-      following = true;
-
-      // Notify the user being followed (non-blocking)
-      notifyFollow(userToFollow._id, req.user).catch(err => console.error('Notify error:', err));
-    }
-
-    // Save both in parallel
-    await Promise.all([followerActivity.save(), followingActivity.save()]);
 
     res.status(200).json({
       following,
@@ -417,19 +379,22 @@ router.post('/:username/follow', authenticateToken, async (req, res) => {
 // GET /api/users/:username/followers - Get user's followers
 router.get('/:username/followers', async (req, res) => {
   try {
-    const user = await User.findOne({ 
-      username: { $regex: new RegExp(`^${escapeRegex(req.params.username)}$`, 'i') }
-    }).select('_id').lean();
-    
+    const user = await User.findOne({ username: normalizeName(req.params.username) })
+      .select('_id')
+      .lean();
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Only the fields the follower list renders - avatars can be base64 blobs,
+    // so pulling whole user documents here was needlessly heavy.
     const activity = await UserActivity.findOne({ user: user._id })
       .select('followers')
-      .populate('followers', '-password -passwordResetToken -passwordResetExpires')
+      .populate('followers', 'username displayName avatar bio')
       .lean();
-    
+
+
     res.status(200).json(ensureAvatars(activity?.followers || []));
   } catch (error) {
     console.error('Get followers error:', error);

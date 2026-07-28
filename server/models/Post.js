@@ -62,6 +62,11 @@ postSchema.index({ author: 1, createdAt: -1 });
 postSchema.index({ authorUsername: 1, createdAt: -1 }); // for fetching posts by username
 postSchema.index({ communityName: 1, createdAt: -1 }); // for fetching posts by community
 postSchema.index({ createdAt: -1 });
-postSchema.index({ title: 'text', content: 'text' }); // allows efficient text search on title and content
+
+// Text search covers the title only. Including `content` made MongoDB tokenise
+// the base64 payload of every image post, which produced an index roughly two
+// orders of magnitude larger than the collection itself and slowed down every
+// write. Run `npm run sync-indexes` after changing anything here.
+postSchema.index({ title: 'text' });
 
 module.exports = mongoose.model('Post', postSchema);

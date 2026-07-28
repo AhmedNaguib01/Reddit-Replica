@@ -2,16 +2,34 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const getAuthToken = () => localStorage.getItem('authToken');
 
-// Cache for posts
-let allPostsCache = null;
-let allPostsCacheTimestamp = 0;
-const ALL_POSTS_CACHE_DURATION = 30 * 1000 // 30 seconds cache 
+const CACHE_DURATION = 30 * 1000;
 
-// Function to invalidate posts cache
-const invalidatePostsCache = () => {
-  allPostsCache = null;
-  allPostsCacheTimestamp = 0;
+// One small cache used by the endpoints that are re-requested constantly while
+// navigating (the feed and the community list). Replaces two hand-rolled
+// timestamp/value pairs that had drifted apart.
+const createCache = (ttlMs = CACHE_DURATION) => {
+  let value = null;
+  let timestamp = 0;
+
+  return {
+    get() {
+      if (value && Date.now() - timestamp < ttlMs) return value;
+      return null;
+    },
+    set(next) {
+      value = next;
+      timestamp = Date.now();
+      return next;
+    },
+    invalidate() {
+      value = null;
+      timestamp = 0;
+    }
+  };
 };
+
+const postsCache = createCache();
+const communitiesCache = createCache();
 
 // Request deduplication - prevents multiple simultaneous calls to the same endpoint
 const pendingRequests = new Map();
@@ -66,22 +84,18 @@ const apiRequest = async (endpoint, options = {}) => {
 // Posts API
 export const postsAPI = {
   getAll: async (subreddit) => {
-    // Only cache when fetching all posts (no subreddit filter)
-    if (!subreddit) {
-      const now = Date.now();
-      if (allPostsCache && (now - allPostsCacheTimestamp) < ALL_POSTS_CACHE_DURATION) {
-        return allPostsCache;
-      }
-      const data = await apiRequest('/posts'); // Calls http://localhost:5000/api/posts
-      allPostsCache = data;
-      allPostsCacheTimestamp = now;
-      return data;
+    // Only the unfiltered feed is cached; community feeds go straight through
+    if (subreddit) {
+      return apiRequest(`/posts?subreddit=${encodeURIComponent(subreddit)}`);
     }
-    const query = `?subreddit=${subreddit}`;
-    return apiRequest(`/posts${query}`);
+
+    const cached = postsCache.get();
+    if (cached) return cached;
+
+    return postsCache.set(await apiRequest('/posts'));
   },
-  
-  invalidateCache: invalidatePostsCache,
+
+  invalidateCache: () => postsCache.invalidate(),
   
   search: (query) => {
     if (!query || query.trim().length < 2) return Promise.resolve([]);
@@ -95,7 +109,7 @@ export const postsAPI = {
       method: 'POST',
       body: JSON.stringify(postData),
     });
-    invalidatePostsCache();
+    postsCache.invalidate();
     return result;
   },
   
@@ -104,7 +118,7 @@ export const postsAPI = {
       method: 'PUT',
       body: JSON.stringify(postData),
     });
-    invalidatePostsCache();
+    postsCache.invalidate();
     return result;
   },
   
@@ -112,7 +126,7 @@ export const postsAPI = {
     const result = await apiRequest(`/posts/${postId}`, {
       method: 'DELETE',
     });
-    invalidatePostsCache();
+    postsCache.invalidate();
     return result;
   },
   
@@ -160,31 +174,16 @@ export const commentsAPI = {
   }),
 };
 
-// Cache for all communities (used by multiple components)
-let allCommunitiesCache = null;
-let allCommunitiesCacheTimestamp = 0;
-const ALL_COMMUNITIES_CACHE_DURATION = 30 * 1000; // 30 seconds
-
-// Function to invalidate communities cache
-const invalidateCommunitiesCache = () => {
-  allCommunitiesCache = null;
-  allCommunitiesCacheTimestamp = 0;
-};
-
 // Communities API - NO caching for user-specific data to ensure freshness
 export const communitiesAPI = {
   getAll: async () => {
-    const now = Date.now();
-    if (allCommunitiesCache && (now - allCommunitiesCacheTimestamp) < ALL_COMMUNITIES_CACHE_DURATION) {
-      return allCommunitiesCache;
-    }
-    const data = await apiRequest('/communities');
-    allCommunitiesCache = data;
-    allCommunitiesCacheTimestamp = now;
-    return data;
+    const cached = communitiesCache.get();
+    if (cached) return cached;
+
+    return communitiesCache.set(await apiRequest('/communities'));
   },
-  
-  invalidateCache: invalidateCommunitiesCache,
+
+  invalidateCache: () => communitiesCache.invalidate(),
   
   getById: (id) => apiRequest(`/communities/${id}`),
   

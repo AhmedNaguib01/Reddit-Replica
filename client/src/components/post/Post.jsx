@@ -1,15 +1,17 @@
 import { useNavigate, Link } from 'react-router-dom';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowBigUp, ArrowBigDown, MessageSquare, Share2, Sparkles, MoreHorizontal, Edit, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useSidebar } from '../../context/SidebarContext';
 import ShareModal from './ShareModal';
-import EditPostModal from './EditPostModal';
 import ConfirmModal from '../common/ConfirmModal';
 import { postsAPI, communitiesAPI } from '../../services/api';
 import '../../styles/Post.css';
+
+// Only the post owner ever opens this, and it carries the image upload path
+const EditPostModal = lazy(() => import('./EditPostModal'));
 
 const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated, initialJoined }) => {
   const navigate = useNavigate();
@@ -253,7 +255,7 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
     <article className="post-card" onClick={handlePostClick}>
       {/* 1. Header: Subreddit, User, Time */}
       <div className="post-header-row">
-        {post.subredditIcon && <img src={post.subredditIcon} alt="" className="post-sub-icon" />}
+        {post.subredditIcon && <img src={post.subredditIcon} alt="" className="post-sub-icon" loading="lazy" decoding="async" />}
         
         <div className="post-meta-text">
           <Link 
@@ -370,29 +372,39 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
         </button>
       </div>
 
-      <ShareModal 
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        postId={post.id}
-        postTitle={localPost.title}
-      />
+      {/* Rendered only while open. A feed holds dozens of posts, and mounting
+          three modal components per post cost far more than it saved. */}
+      {isShareModalOpen && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          postId={post.id}
+          postTitle={localPost.title}
+        />
+      )}
 
-      <EditPostModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        post={localPost}
-        onPostUpdated={handlePostUpdated}
-      />
+      {isEditModalOpen && (
+        <Suspense fallback={null}>
+          <EditPostModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            post={localPost}
+            onPostUpdated={handlePostUpdated}
+          />
+        </Suspense>
+      )}
 
-      <ConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={confirmDelete}
-        title="Delete Post"
-        message="Are you sure you want to delete this post? This action cannot be undone."
-        confirmText="Delete"
-        type="danger"
-      />
+      {isDeleteModalOpen && (
+        <ConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={confirmDelete}
+          title="Delete Post"
+          message="Are you sure you want to delete this post? This action cannot be undone."
+          confirmText="Delete"
+          type="danger"
+        />
+      )}
 
       {/* AI Summary Modal - rendered via portal to escape post layout */}
       {isSummaryModalOpen && createPortal(

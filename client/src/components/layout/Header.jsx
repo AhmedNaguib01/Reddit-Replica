@@ -1,12 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Moon, Search, X, Plus, LogOut, User, MoreHorizontal, Smartphone, MessageCircle } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
 import { communitiesAPI, usersAPI } from '../../services/api';
 import NotificationsDropdown from './NotificationsDropdown';
-import CreatePostModal from '../post/CreatePostModal';
 import '../../styles/Header.css';
+
+// Opened from the header button, and it drags in the image upload path
+const CreatePostModal = lazy(() => import('../post/CreatePostModal'));
 
 const getDefaultAvatar = (username) => `https://placehold.co/100/ff4500/white?text=${username?.charAt(0).toUpperCase() || 'U'}`;
 
@@ -186,7 +188,7 @@ const SearchBar = () => {
                         setSearchQuery('');
                       }}
                     >
-                      <img src={community.iconUrl} alt="" className="suggestion-icon" />
+                      <img src={community.iconUrl} alt="" className="suggestion-icon" loading="lazy" decoding="async" />
                       <div className="suggestion-info">
                         <div className="suggestion-name">r/{community.name}</div>
                         <div className="suggestion-meta">{community.members || community.memberCount} members</div>
@@ -211,7 +213,7 @@ const SearchBar = () => {
                         setSearchQuery('');
                       }}
                     >
-                      <img src={user.avatar || getDefaultAvatar(user.username)} alt="" className="suggestion-icon" />
+                      <img src={user.avatar || getDefaultAvatar(user.username)} alt="" className="suggestion-icon" loading="lazy" decoding="async" />
                       <div className="suggestion-info">
                         <div className="suggestion-name">{user.displayName || user.username}</div>
                         <div className="suggestion-meta">u/{user.username} · {user.karma} karma</div>
@@ -476,14 +478,16 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
         )}
       </div>
 
-      {currentUser && (
-        <CreatePostModal 
-          isOpen={isCreatePostOpen}
-          onClose={() => setIsCreatePostOpen(false)}
-          onPostCreated={() => {
-            setIsCreatePostOpen(false);
-          }}
-        />
+      {currentUser && isCreatePostOpen && (
+        <Suspense fallback={null}>
+          <CreatePostModal
+            isOpen={isCreatePostOpen}
+            onClose={() => setIsCreatePostOpen(false)}
+            onPostCreated={() => {
+              setIsCreatePostOpen(false);
+            }}
+          />
+        </Suspense>
       )}
     </header>
   );

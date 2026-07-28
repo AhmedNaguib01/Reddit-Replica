@@ -110,7 +110,6 @@ const Comment = ({ comment, onAuthRequired, onReplyAdded, onCommentUpdated, onCo
 
     try {
       setSubmittingReply(true);
-      const { commentsAPI } = await import('../../services/api');
       const newReply = await commentsAPI.create({
         postId: comment.postId,
         content: replyText.trim(),

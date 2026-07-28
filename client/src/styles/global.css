@@ -332,3 +332,9 @@ button:disabled {
     padding: 8px;
   }
 }
+
+/* Placeholder shown while a lazily-loaded route chunk is fetched. Holds the
+   viewport height so the header does not jump as the page swaps in. */
+.route-loading {
+  min-height: 100vh;
+}

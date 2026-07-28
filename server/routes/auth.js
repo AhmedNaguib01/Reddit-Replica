@@ -7,6 +7,7 @@ const User = require('../models/User');
 const UserActivity = require('../models/UserActivity');
 const { authenticateToken } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../utils/email');
+const { normalizeName } = require('../utils/helpers');
 
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -53,14 +54,17 @@ router.post('/register',
 
       const { email, username, password } = req.body;
 
-      // Check if email already exists
-      const existingEmail = await User.findOne({ email: email.toLowerCase() });
+      // Both fields are stored lowercase and uniquely indexed, so these are
+      // index lookups rather than case-insensitive collection scans
+      const [existingEmail, existingUser] = await Promise.all([
+        User.exists({ email: email.toLowerCase() }),
+        User.exists({ username: normalizeName(username) })
+      ]);
+
       if (existingEmail) {
         return res.status(409).json({ message: 'Email already in use' });
       }
 
-      // Check if username already exists
-      const existingUser = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
       if (existingUser) {
         return res.status(409).json({ message: 'Username already exists' });
       }
@@ -138,7 +142,7 @@ router.post('/google', async (req, res) => {
         let counter = 1;
         
         // Ensure username is unique
-        while (await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } })) {
+        while (await User.exists({ username: normalizeName(username) })) {
           username = `${baseUsername}${counter}`;
           counter++;
         }
@@ -193,8 +197,9 @@ router.post('/login',
 
       const { username, password } = req.body;
 
-      // Find user (case-insensitive)
-      const user = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+      // Usernames are stored lowercase, so normalising the input keeps the
+      // login case-insensitive while still using the unique index
+      const user = await User.findOne({ username: normalizeName(username) });
       if (!user) {
         return res.status(401).json({ message: 'Invalid username or password' });
       }

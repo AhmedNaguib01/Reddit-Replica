@@ -1,20 +1,19 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { TTLCache } = require('../utils/cache');
 
-const userCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// Bounded so a long-running process cannot accumulate an entry per user seen
+const userCache = new TTLCache(5 * 60 * 1000, 1000);
 
 // Used to get user data with caching
 const getCachedUser = async (userId) => {
   const cached = userCache.get(userId);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.user;
-  }
-  // Fetches username & avatar ONLY 
+  if (cached) return cached;
+
+  // Fetches username & avatar ONLY
   const user = await User.findById(userId).select('username avatar').lean();
   if (user) {
-    // Update the map to include the key & value. 
-    userCache.set(userId, { user, timestamp: Date.now() });
+    userCache.set(userId, user);
   }
   return user;
 };

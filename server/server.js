@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
@@ -16,7 +17,8 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 const allowedOrigins = [
-  'http://localhost:5173',
+  'http://localhost:5173', // vite dev
+  'http://localhost:4173', // vite preview (production build, run locally)
   'http://localhost:3000',
   process.env.FRONTEND_URL,
   process.env.CLIENT_URL
@@ -33,14 +35,21 @@ app.use(cors({
   },
   credentials: true
 }));
+// gzip JSON responses. Feeds and profile payloads are mostly repetitive text,
+// which typically compresses by around 80%.
+app.use(compression());
+
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
+// Request logging. Skipped in production because on serverless every log line
+// is billed and adds latency to the response.
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Ensure MongoDB is connected before handling any route. On a long-running
 // server this resolves instantly after the first call; on serverless it makes

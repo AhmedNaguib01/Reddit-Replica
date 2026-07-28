@@ -120,7 +120,9 @@ userSchema.methods.toJSON = function() {
   return obj;
 };
 
+// `username` and `email` already get unique indexes from the field definitions.
+// The former displayName text index was never queried - user search uses a
+// regex over both fields - so it only cost write throughput.
 userSchema.index({ createdAt: -1 }); // for sorting by newest
-userSchema.index({ displayName: 'text' }); // for searching by display name
 
 module.exports = mongoose.model('User', userSchema);

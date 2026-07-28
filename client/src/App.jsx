@@ -1,28 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
+// The home page is what almost every visit lands on, so it ships in the initial
+// bundle. Every other route is fetched on demand - this keeps the first load
+// from carrying the chat client, the static content pages and every modal.
 import HomePage from './pages/HomePage';
-import CommunityPage from './pages/CommunityPage';
-import PopularPage from './pages/PopularPage';
-import UserProfilePage from './pages/UserProfilePage';
-import PostDetailPage from './pages/PostDetailPage';
-import ExplorePage from './pages/ExplorePage';
-import SearchResultsPage from './pages/SearchResultsPage';
-import ManageCommunitiesPage from './pages/ManageCommunitiesPage';
-import AllCommunitiesPage from './pages/AllCommunitiesPage';
-import AboutPage from './pages/AboutPage';
-import HelpPage from './pages/HelpPage';
-import BlogPage from './pages/BlogPage';
-import CareersPage from './pages/CareersPage';
-import RulesPage from './pages/RulesPage';
-import PrivacyPage from './pages/PrivacyPage';
-import UserAgreementPage from './pages/UserAgreementPage';
-import SavedPostsPage from './pages/SavedPostsPage';
-import CustomFeedPage from './pages/CustomFeedPage';
-import ChatPage from './pages/ChatPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
+
+const CommunityPage = lazy(() => import('./pages/CommunityPage'));
+const PopularPage = lazy(() => import('./pages/PopularPage'));
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
+const PostDetailPage = lazy(() => import('./pages/PostDetailPage'));
+const ExplorePage = lazy(() => import('./pages/ExplorePage'));
+const SearchResultsPage = lazy(() => import('./pages/SearchResultsPage'));
+const ManageCommunitiesPage = lazy(() => import('./pages/ManageCommunitiesPage'));
+const AllCommunitiesPage = lazy(() => import('./pages/AllCommunitiesPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const HelpPage = lazy(() => import('./pages/HelpPage'));
+const BlogPage = lazy(() => import('./pages/BlogPage'));
+const CareersPage = lazy(() => import('./pages/CareersPage'));
+const RulesPage = lazy(() => import('./pages/RulesPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const UserAgreementPage = lazy(() => import('./pages/UserAgreementPage'));
+const SavedPostsPage = lazy(() => import('./pages/SavedPostsPage'));
+const CustomFeedPage = lazy(() => import('./pages/CustomFeedPage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+
+// Only mounted once the user actually opens it, and it pulls in the Google
+// sign-in flow with it
+const LoginModal = lazy(() => import('./components/auth/LoginModal'));
+
 import Header from './components/layout/Header';
 import LoadingBar from './components/layout/LoadingBar';
-import LoginModal from './components/auth/LoginModal';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { LoadingProvider } from './context/LoadingContext';
@@ -98,6 +107,7 @@ function App() {
             />
             <LoadingBar />
 
+          <Suspense fallback={<div className="route-loading" />}>
           <Routes>
             <Route path="/" element={<HomePage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
             <Route path="/r/popular" element={<PopularPage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
@@ -121,8 +131,13 @@ function App() {
             <Route path="/u/:username" element={<UserProfilePage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
             <Route path="/post/:postId" element={<PostDetailPage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
           </Routes>
+          </Suspense>
 
-            <LoginModal isOpen={isLoginOpen} onClose={closeLogin} />
+            {isLoginOpen && (
+              <Suspense fallback={null}>
+                <LoginModal isOpen={isLoginOpen} onClose={closeLogin} />
+              </Suspense>
+            )}
             </div>
             </Router>
             </LoadingProvider>

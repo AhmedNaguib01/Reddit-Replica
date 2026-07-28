@@ -1,8 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { chatsAPI } from '../services/api';
 import { useAuth } from './AuthContext';
+import usePolling from '../hooks/usePolling';
 
 const ChatContext = createContext();
+
+// The header badge does not need second-by-second accuracy, and this runs on
+// every page for every logged-in user
+const UNREAD_POLL_INTERVAL = 20000;
 
 export const ChatProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -27,18 +32,14 @@ export const ChatProvider = ({ children }) => {
     fetchUnreadCount();
   }, [fetchUnreadCount]);
 
-  // Initial fetch and polling - wait for auth to complete
+  // Clear the badge as soon as the user signs out
   useEffect(() => {
-    if (authLoading) return;
-    
-    fetchUnreadCount();
-    
-    // Poll every 5 seconds for chat notifications
-    if (currentUser) {
-      const interval = setInterval(fetchUnreadCount, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [fetchUnreadCount, authLoading, currentUser]);
+    if (!currentUser) setUnreadCount(0);
+  }, [currentUser]);
+
+  // Polls only once auth has settled, only for signed-in users, and only while
+  // the tab is actually visible
+  usePolling(fetchUnreadCount, UNREAD_POLL_INTERVAL, !authLoading && !!currentUser);
 
   return (
     <ChatContext.Provider value={{ unreadCount, fetchUnreadCount, markChatAsRead }}>

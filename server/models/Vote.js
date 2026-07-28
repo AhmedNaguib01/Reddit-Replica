@@ -26,6 +26,7 @@ const voteSchema = new mongoose.Schema({
 });
 
 voteSchema.index({ user: 1, targetType: 1, target: 1 }, { unique: true });
-voteSchema.index({ target: 1 });
+// Serves the cascade deletes, which always filter on target + targetType
+voteSchema.index({ target: 1, targetType: 1 });
 
 module.exports = mongoose.model('Vote', voteSchema);

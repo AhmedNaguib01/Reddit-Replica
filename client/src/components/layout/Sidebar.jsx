@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { 
+import { useState, lazy, Suspense } from 'react';
+import {
   Home, TrendingUp, Compass, Menu,
   Clock, Plus, Settings, HelpCircle, Briefcase, FileText, Users, ChevronDown, ChevronUp, LayoutGrid, Star, BookOpen
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
-import CreateCommunityModal from '../community/CreateCommunityModal';
-import CreateCustomFeedModal from '../feed/CreateCustomFeedModal';
 import '../../styles/Sidebar.css';
+
+// Both are behind sidebar buttons, so they stay out of the initial bundle
+const CreateCommunityModal = lazy(() => import('../community/CreateCommunityModal'));
+const CreateCustomFeedModal = lazy(() => import('../feed/CreateCustomFeedModal'));
 
 const Sidebar = ({ isCollapsed, onToggle }) => {
   const { currentUser } = useAuth();
@@ -239,18 +241,26 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
       </nav>
 
       {/* Create Community Modal */}
-      <CreateCommunityModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCommunityCreated={handleCommunityCreated}
-      />
+      {isCreateModalOpen && (
+        <Suspense fallback={null}>
+          <CreateCommunityModal
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            onCommunityCreated={handleCommunityCreated}
+          />
+        </Suspense>
+      )}
 
       {/* Create Custom Feed Modal */}
-      <CreateCustomFeedModal
-        isOpen={isCreateFeedModalOpen}
-        onClose={() => setIsCreateFeedModalOpen(false)}
-        onFeedCreated={handleFeedCreated}
-      />
+      {isCreateFeedModalOpen && (
+        <Suspense fallback={null}>
+          <CreateCustomFeedModal
+            isOpen={isCreateFeedModalOpen}
+            onClose={() => setIsCreateFeedModalOpen(false)}
+            onFeedCreated={handleFeedCreated}
+          />
+        </Suspense>
+      )}
     </aside>
   );
 };

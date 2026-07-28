@@ -1,53 +1,61 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bell, Check, MessageSquare, ArrowBigUp, UserPlus, Reply } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { notificationsAPI } from '../../services/api';
+import usePolling from '../../hooks/usePolling';
 import '../../styles/NotificationsDropdown.css';
+
+const BADGE_POLL_INTERVAL = 20000;
 
 const NotificationsDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
   const { currentUser } = useAuth();
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  // Fetch notifications when dropdown opens
-  useEffect(() => {
-    if (isOpen && currentUser) {
-      fetchNotifications();
-    }
-  }, [isOpen, currentUser]);
-
-  // Fetch notifications on mount for badge count and poll every 5 seconds
-  useEffect(() => {
-    if (currentUser) {
-      fetchNotifications();
-      
-      // Poll for new notifications every 5 seconds
-      const interval = setInterval(() => {
-        fetchNotifications();
-      }, 5000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [currentUser]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!currentUser) return;
     try {
       setLoading(true);
       const data = await notificationsAPI.getAll();
-      setNotifications(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setNotifications(list);
+      setUnreadCount(list.filter(n => !n.read).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       setNotifications([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
+
+  // The badge only needs a number. Polling the full list pulled 50 notifications
+  // every few seconds just to count the unread ones; the list itself is fetched
+  // when the dropdown is actually opened.
+  const fetchUnreadCount = useCallback(async () => {
+    if (!currentUser) return;
+    const data = await notificationsAPI.getUnreadCount();
+    setUnreadCount(data.count || 0);
+  }, [currentUser]);
+
+  usePolling(fetchUnreadCount, BADGE_POLL_INTERVAL, !!currentUser);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  }, [currentUser]);
+
+  // Fetch the list only when the dropdown opens
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      fetchNotifications();
+    }
+  }, [isOpen, currentUser, fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -61,11 +69,17 @@ const NotificationsDropdown = () => {
   }, []);
 
   const markAsRead = async (id) => {
+    // Clicking an already-read notification should not fire a request or move
+    // the badge count
+    const target = notifications.find(n => (n.id || n._id) === id);
+    if (!target || target.read) return;
+
     try {
       await notificationsAPI.markAsRead(id);
       setNotifications(prev =>
         prev.map(n => n.id === id || n._id === id ? { ...n, read: true } : n)
       );
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -75,6 +89,7 @@ const NotificationsDropdown = () => {
     try {
       await notificationsAPI.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
     } catch (error) {
       console.error('Error marking all as read:', error);
     }

@@ -118,7 +118,7 @@ const RightSidebar = ({ communityData }) => {
             {displayedCommunities.map((community, index) => (
               <li key={community._id || community.id || community.name} className="community-item">
                 <div className="community-rank">{index + 1}</div>
-                <img src={community.iconUrl} alt="" className="community-icon" />
+                <img src={community.iconUrl} alt="" className="community-icon" loading="lazy" decoding="async" />
                 <div className="community-info">
                   <Link to={`/r/${community.name}`} className="community-name">
                     r/{community.name}

@@ -202,7 +202,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // GET /api/chats/:id/messages - Get messages (for polling)
 router.get('/:id/messages', authenticateToken, async (req, res) => {
   try {
-    const chat = await Chat.findById(req.params.id);
+    // This endpoint is polled, so it reads lean and never rewrites the whole
+    // document. Marking messages read is a targeted positional update instead
+    // of hydrating every message and saving the entire array back.
+    const chat = await Chat.findById(req.params.id)
+      .select('participants messages')
+      .lean();
 
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
@@ -212,17 +217,23 @@ router.get('/:id/messages', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    // Mark messages as read
-    let hasUnread = false;
-    chat.messages.forEach(msg => {
-      if (!msg.read && msg.senderUsername !== req.user.username) {
-        msg.read = true;
-        hasUnread = true;
-      }
-    });
+    const unread = chat.messages.filter(
+      msg => !msg.read && msg.senderUsername !== req.user.username
+    );
 
-    if (hasUnread) {
-      await chat.save();
+    if (unread.length) {
+      await Chat.updateOne(
+        { _id: req.params.id },
+        { $set: { 'messages.$[unreadMsg].read': true } },
+        {
+          arrayFilters: [{
+            'unreadMsg.read': false,
+            'unreadMsg.senderUsername': { $ne: req.user.username }
+          }],
+          timestamps: false // reading a chat should not bump it up the list
+        }
+      );
+      unread.forEach(msg => { msg.read = true; });
     }
 
     res.status(200).json(chat.messages);
