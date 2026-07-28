@@ -32,7 +32,7 @@ A full-stack Reddit clone featuring communities, posts, comments, voting, real-t
 | **Backend** | Node.js, Express 5, MongoDB, Mongoose, JWT |
 | **Authentication** | Local + Google OAuth 2.0 |
 | **AI** | Google Gemini API |
-| **Deployment** | Vercel (Frontend), Render (Backend) |
+| **Deployment** | Vercel (Frontend & Backend) |
 
 ---
 
@@ -96,17 +96,25 @@ npm run dev
 
 ## ☁️ Deployment
 
-### Backend (Render)
+### Backend (Vercel)
 
-1. Create a new project on [Render](https://render.com/)
+1. Create a new project on [Vercel](https://vercel.com/)
 2. Connect your GitHub repository and set the root directory to `server`
-3. Configure environment variables:
+3. Leave the framework preset as **Other** — `server/vercel.json` routes every
+   request to the Express app in `server/api/index.js`
+4. Configure environment variables (see `server/.env.example`):
    - `MONGODB_URI`
    - `JWT_SECRET`
    - `NODE_ENV=production`
    - `GOOGLE_CLIENT_ID`
-   - `FRONTEND_URL` *(your Vercel deployment URL)*
+   - `FRONTEND_URL` *(your frontend Vercel URL)*
+   - `CLIENT_URL` *(same URL — used for password-reset links)*
+   - `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL` *(optional)*
    - `GEMINI_API_KEY` *(optional)*
+5. Verify the deployment at `https://<backend>.vercel.app/api/health`
+
+> 💡 MongoDB Atlas must allow connections from anywhere (`0.0.0.0/0`) since
+> Vercel functions do not have static outbound IPs.
 
 ### Frontend (Vercel)
 
@@ -114,7 +122,7 @@ npm run dev
 2. Connect your GitHub repository and set the root directory to `client`
 3. Select **Vite** as the framework preset
 4. Configure environment variables:
-   - `VITE_API_URL` *(Render URL + `/api`)*
+   - `VITE_API_URL` *(backend Vercel URL + `/api`)*
    - `VITE_GOOGLE_CLIENT_ID`
 
 > ⚠️ **Important:** Add your Vercel domain to Google OAuth authorized origins in the Google Cloud Console.

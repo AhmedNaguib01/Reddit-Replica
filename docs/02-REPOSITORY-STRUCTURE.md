@@ -56,6 +56,8 @@ reddit-clone/
 │   └── vite.config.js        # Vite build configuration
 │
 ├── server/                    # Backend Node.js application
+│   ├── api/                  # Vercel serverless entry
+│   │   └── index.js          # Exports the Express app
 │   ├── config/               # Configuration files
 │   │   └── database.js       # MongoDB connection
 │   ├── docs/                 # Documentation
@@ -90,8 +92,11 @@ reddit-clone/
 │   │   ├── helpers.js        # Formatting helpers
 │   │   └── notifications.js  # Notification helpers
 │   ├── .env                  # Environment variables
+│   ├── .env.example         # Template of required env vars
 │   ├── .gitignore           # Git ignore rules
+│   ├── .vercelignore        # Files excluded from deployment
 │   ├── package.json         # Dependencies
+│   ├── vercel.json          # Vercel deployment config
 │   └── server.js            # Express app entry point
 │
 ├── .git/                     # Git repository
