@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { MessageSquare, Bookmark, Share2, MoreHorizontal, Edit, Trash2, ArrowLeft, Sparkles, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
@@ -21,12 +21,19 @@ import '../styles/Post.css';
 const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) => {
   const { postId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
-  
-  const [post, setPost] = useState(null);
+
+  // When arriving from a feed, the post is already in hand - render it straight
+  // away and let the network catch up, instead of showing a skeleton for data
+  // the previous page had already loaded.
+  const seededPost = location.state?.post?.id === postId ? location.state.post : null;
+
+  const [post, setPost] = useState(seededPost);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!seededPost);
+  const [commentsLoading, setCommentsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -59,59 +66,54 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
   useEffect(() => {
     let isMounted = true;
     
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch post, comments, and membership in parallel for faster loading
-        const fetchPromises = [
-          postsAPI.getById(postId),
-          commentsAPI.getByPostId(postId)
-        ];
-        
-        // Only fetch joined communities if user is logged in
-        if (currentUser) {
-          fetchPromises.push(communitiesAPI.getJoinedCached().catch(() => []));
-        }
-        
-        const results = await Promise.all(fetchPromises);
-        const [postData, commentsData, joinedCommunities] = results;
-        
+    // All three requests go out together, but each updates the page as it
+    // arrives. Previously the post waited on the slowest of the three, so a
+    // busy comment thread delayed the post body itself.
+    setCommentsLoading(true);
+
+    postsAPI.getById(postId)
+      .then(postData => {
         if (!isMounted) return;
-        
         setPost(postData);
-        setComments(commentsData);
-        
-        // Set saved state from post data
+
         if (postData.saved !== undefined) {
           setSaved(postData.saved);
         } else if (postData.isSaved !== undefined) {
           setSaved(postData.isSaved);
         }
-        
-        // Check membership from already-fetched data
-        if (currentUser && postData.subreddit && joinedCommunities) {
-          const memberOfCommunity = joinedCommunities.some(
-            c => c.name.toLowerCase() === postData.subreddit.toLowerCase()
-          );
-          setIsMember(memberOfCommunity);
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
+      })
+      .catch(error => console.error('Error fetching post:', error))
+      .finally(() => { if (isMounted) setLoading(false); });
 
-    fetchData();
-    
+    commentsAPI.getByPostId(postId)
+      .then(commentsData => { if (isMounted) setComments(commentsData); })
+      .catch(error => console.error('Error fetching comments:', error))
+      .finally(() => { if (isMounted) setCommentsLoading(false); });
+
     return () => {
       isMounted = false;
     };
   }, [postId, currentUser]);
+
+  // Membership drives whether the comment box is enabled. It needs the post's
+  // community, which may come from the seeded post or from the fetch above.
+  useEffect(() => {
+    const subreddit = post?.subreddit;
+    if (!currentUser || !subreddit) {
+      setIsMember(false);
+      return;
+    }
+
+    let isMounted = true;
+    communitiesAPI.getJoinedCached()
+      .then(joined => {
+        if (!isMounted || !Array.isArray(joined)) return;
+        setIsMember(joined.some(c => c.name?.toLowerCase() === subreddit.toLowerCase()));
+      })
+      .catch(() => {});
+
+    return () => { isMounted = false; };
+  }, [currentUser, post?.subreddit]);
 
   const handleSavePost = async () => {
     if (!currentUser) {
@@ -518,8 +520,9 @@ const PostDetailPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =
 
             {/* Comments Section */}
             <div className="comments-section">
-              <CommentList 
-                comments={comments} 
+              {commentsLoading && comments.length === 0 && <CommentListSkeleton count={4} />}
+              <CommentList
+                comments={comments}
                 onAuthRequired={onAuthAction}
                 isMember={isMember}
                 communityName={post.subreddit}

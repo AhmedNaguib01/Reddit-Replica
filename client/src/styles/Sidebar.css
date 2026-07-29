@@ -1,15 +1,16 @@
 .sidebar-container {
-  width: 270px; 
+  width: 270px;
   min-width: 270px;
   height: calc(100vh - 56px);
   background-color: var(--color-bg-card);
   border-right: 1px solid var(--color-border);
-  position: sticky; 
-  top: 56px; 
+  position: sticky;
+  top: 56px;
   overflow: visible;
-  padding: 8px 0; 
+  padding: 8px 0;
   box-sizing: border-box;
-  transition: all var(--transition-normal);
+  transition: width var(--transition-normal),
+              min-width var(--transition-normal);
   align-self: flex-start;
   display: flex;
   flex-direction: column;
@@ -21,6 +22,14 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Keeps the scrollbar clear of the collapse button, which sits on the border */
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.sidebar-nav:hover {
+  scrollbar-color: var(--color-border) transparent;
 }
 
 .sidebar-container.collapsed {
@@ -29,12 +38,15 @@
   height: calc(100vh - 56px);
 }
 
+/* Sits centred on the sidebar's right border, like a handle on the edge of the
+   panel. Slightly smaller than before so it reads as a control rather than a
+   floating blob, and it no longer collides with the scrollbar. */
 .sidebar-toggle-btn {
   position: absolute;
-  top: 12px;
-  right: -18px;
-  width: 36px;
-  height: 36px;
+  top: 10px;
+  right: -14px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
@@ -43,9 +55,17 @@
   justify-content: center;
   cursor: pointer;
   z-index: 10;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast),
+              transform var(--transition-fast);
   color: var(--color-text-secondary);
   box-shadow: var(--shadow-sm);
+}
+
+.sidebar-toggle-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .sidebar-container.collapsed .sidebar-toggle-btn {
@@ -59,18 +79,36 @@
   background-color: var(--color-bg-secondary);
   color: var(--color-text-primary);
   border-color: var(--color-text-secondary);
+  transform: scale(1.08);
 }
 
-/* Hide scrollbar for Chrome/Safari/Opera but keep functionality */
+.sidebar-toggle-btn:active {
+  transform: scale(0.96);
+}
+
+/* The thumb used to be a hardcoded light grey, which showed up as a bright bar
+   against the dark sidebar. It now follows the theme and stays invisible until
+   the sidebar is hovered, so it does not compete with the collapse button. */
 .sidebar-nav::-webkit-scrollbar {
   width: 6px;
 }
-.sidebar-nav::-webkit-scrollbar-thumb {
-  background-color: #edeff1;
-  border-radius: 4px;
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
 }
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: var(--radius-full);
+  transition: background-color var(--transition-normal);
+}
+
 .sidebar-nav:hover::-webkit-scrollbar-thumb {
-  background-color: #ccc;
+  background-color: var(--color-border);
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-secondary);
 }
 
 .sidebar-section {

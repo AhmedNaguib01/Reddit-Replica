@@ -114,7 +114,10 @@ const RightSidebar = ({ communityData }) => {
           <div className="widget-header">
             <h3>POPULAR COMMUNITIES</h3>
           </div>
-          <ul className="community-list">
+          {/* Expanded, the full list ran past the bottom of the window and you
+              had to scroll the whole page to reach the end of it. It now scrolls
+              within the widget instead. */}
+          <ul className={`community-list${showAll ? ' expanded' : ''}`}>
             {displayedCommunities.map((community, index) => (
               <li key={community._id || community.id || community.name} className="community-item">
                 <div className="community-rank">{index + 1}</div>

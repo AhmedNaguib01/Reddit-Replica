@@ -4,10 +4,12 @@ import { PostListSkeleton } from '../common/LoadingSkeleton';
 import { postsAPI, communitiesAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-// Simple cache for communities to avoid refetching
-let communitiesCache = null;
-let cacheTimestamp = 0;
-const CACHE_DURATION = 30 * 1000; // 30 seconds
+// How many posts are put on screen at once. Rendering the whole feed meant
+// every post's image and community icon was requested up front, most of them
+// far below the fold. Sorting still runs over the full set, so only how much is
+// displayed changes.
+const INITIAL_VISIBLE = 10;
+const LOAD_MORE_STEP = 10;
 
 const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired }) => {
   const [posts, setPosts] = useState([]);
@@ -15,8 +17,10 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
   const [joinedCommunities, setJoinedCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const { currentUser, loading: authLoading } = useAuth();
   const hasFetched = useRef(false);
+  const sentinelRef = useRef(null);
 
   // Fetch posts and communities immediately (don't wait for auth)
   useEffect(() => {
@@ -29,30 +33,17 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
           setLoading(true);
         }
         
-        // Fetch posts and communities in parallel - don't wait for auth
-        const postsPromise = postsAPI.getAll(filterBySubreddit);
-        
-        // Use cached communities if available and not expired
-        let communitiesPromise;
-        const now = Date.now();
-        if (communitiesCache && (now - cacheTimestamp) < CACHE_DURATION) {
-          communitiesPromise = Promise.resolve(communitiesCache);
-        } else {
-          communitiesPromise = communitiesAPI.getAll().then(data => {
-            communitiesCache = data;
-            cacheTimestamp = now;
-            return data;
-          });
-        }
-        
+        // Both in parallel, without waiting for auth. communitiesAPI.getAll
+        // caches internally, so no second cache is needed here.
         const [postsData, communitiesData] = await Promise.all([
-          postsPromise,
-          communitiesPromise
+          postsAPI.getAll(filterBySubreddit),
+          communitiesAPI.getAll()
         ]);
-        
+
         if (isMounted) {
           setPosts(postsData);
           setCommunities(communitiesData);
+          setVisibleCount(INITIAL_VISIBLE);
           setError(null);
           setLoading(false);
           hasFetched.current = true;
@@ -104,6 +95,26 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
     return new Set(joinedCommunities.map(c => c.name));
   }, [joinedCommunities]);
 
+  // Reveal the next batch as the end of the list comes into view. The button
+  // inside the sentinel stays as the fallback for browsers without
+  // IntersectionObserver and for keyboard users.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          setVisibleCount(current => current + LOAD_MORE_STEP);
+        }
+      },
+      { rootMargin: '600px' } // start loading before the user reaches the end
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [visibleCount, posts.length, loading]);
+
   const handleVoteUpdate = (postId, newVoteCount) => {
     setPosts(prevPosts =>
       prevPosts.map(post =>
@@ -138,15 +149,19 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
     displayPosts = displayPosts.filter(p => p.author === filterByAuthor);
   }
 
-  // Sort
+  // Sort. `new` previously compared a `timestamp` field the API does not
+  // return, so every comparison was NaN and the order never actually changed.
   if (sortBy === 'new') {
-    displayPosts.sort((a, b) => b.timestamp - a.timestamp);
+    displayPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   } else if (sortBy === 'top') {
     displayPosts.sort((a, b) => b.voteCount - a.voteCount);
   }
 
-  // Attach community icons and join status
-  const postsWithIcons = displayPosts.map(post => {
+  const totalCount = displayPosts.length;
+  const hasMore = visibleCount < totalCount;
+
+  // Attach community icons and join status, for the visible slice only
+  const postsWithIcons = displayPosts.slice(0, visibleCount).map(post => {
     const community = communities.find(c => 
       c.name === post.subreddit || 
       c.name === post.communityName ||
@@ -170,9 +185,9 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
   return (
     <div className="post-list">
       {postsWithIcons.map((post) => (
-        <Post 
-          key={post.id} 
-          post={post} 
+        <Post
+          key={post.id}
+          post={post}
           onAuthRequired={onAuthRequired}
           onVoteUpdate={handleVoteUpdate}
           onPostDeleted={handlePostDeleted}
@@ -180,6 +195,18 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
           initialJoined={post.isJoined}
         />
       ))}
+
+      {hasMore && (
+        <div ref={sentinelRef} className="post-list-sentinel">
+          <button
+            type="button"
+            className="btn-load-more"
+            onClick={() => setVisibleCount(c => c + LOAD_MORE_STEP)}
+          >
+            Load more posts
+          </button>
+        </div>
+      )}
     </div>
   );
 };

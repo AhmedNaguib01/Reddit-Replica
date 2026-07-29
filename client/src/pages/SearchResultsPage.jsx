@@ -107,7 +107,7 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
               <div className="communities-results">
                 {users.map(user => (
                   <Link to={`/user/${user.username}`} key={user._id || user.username} className="community-result">
-                    <img src={user.avatar || getDefaultAvatar(user.username)} alt={user.username} className="community-result-icon" />
+                    <img src={user.avatar || getDefaultAvatar(user.username)} alt={user.username} className="community-result-icon" loading="lazy" decoding="async" />
                     <div className="community-result-info">
                       <h3>{user.displayName || user.username}</h3>
                       <p className="user-search-username">u/{user.username}</p>
@@ -127,7 +127,7 @@ const SearchResultsPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }
               <div className="communities-results">
                 {matchingCommunities.map(community => (
                   <Link to={`/r/${community.name}`} key={community._id || community.name} className="community-result">
-                    <img src={community.iconUrl} alt={community.displayName || community.name} className="community-result-icon" />
+                    <img src={community.iconUrl} alt={community.displayName || community.name} className="community-result-icon" loading="lazy" decoding="async" />
                     <div className="community-result-info">
                       <h3>r/{community.name}</h3>
                       <p>{community.description}</p>

@@ -393,8 +393,19 @@ const ProfileDropdown = ({ user, onLogout, isDarkMode, onToggleDarkMode }) => {
 
 const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [showAppComingSoon, setShowAppComingSoon] = useState(false);
+  const comingSoonTimer = useRef(null);
   const { currentUser, logout, loading } = useAuth();
   const { unreadCount: unreadMessages } = useChat();
+
+  // There is no mobile app yet, so the button says so and clears itself
+  const handleGetAppClick = () => {
+    setShowAppComingSoon(true);
+    clearTimeout(comingSoonTimer.current);
+    comingSoonTimer.current = setTimeout(() => setShowAppComingSoon(false), 2500);
+  };
+
+  useEffect(() => () => clearTimeout(comingSoonTimer.current), []);
 
   const handleCreatePostClick = () => {
     if (!currentUser) {
@@ -422,10 +433,23 @@ const Header = ({ onLoginClick, isDarkMode, onToggleDarkMode }) => {
       <div className="header-right">
         {/* Desktop: Get App button - only show for guests */}
         {!currentUser && (
-          <button className="btn btn-get-app desktop-only" aria-label="Get App">
-            <Smartphone size={18} />
-            Get App
-          </button>
+          <div className="get-app-wrapper desktop-only">
+            <button
+              className="btn btn-get-app"
+              aria-label="Get App"
+              onClick={handleGetAppClick}
+            >
+              <Smartphone size={18} />
+              Get App
+            </button>
+            <span
+              className={`coming-soon-badge${showAppComingSoon ? ' visible' : ''}`}
+              role="status"
+              aria-live="polite"
+            >
+              {showAppComingSoon ? 'Coming soon' : ''}
+            </span>
+          </div>
         )}
 
         {/* Create Post button - show for logged-in users on all screens, mobile only for guests */}

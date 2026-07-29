@@ -448,7 +448,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
               <div className="profile-users-list">
                 {followers.map(follower => (
                   <Link to={`/user/${follower.username}`} key={follower.id} className="user-list-card">
-                    <img src={follower.avatar || getDefaultAvatar(follower.username)} alt={follower.username} className="user-list-avatar" />
+                    <img src={follower.avatar || getDefaultAvatar(follower.username)} alt={follower.username} className="user-list-avatar" loading="lazy" decoding="async" />
                     <div className="user-list-info">
                       <span className="user-list-name">u/{follower.username}</span>
                       <span className="user-list-karma">{follower.karma} karma</span>
@@ -468,7 +468,7 @@ const UserProfilePage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) 
               <div className="profile-users-list">
                 {followingList.map(followedUser => (
                   <Link to={`/user/${followedUser.username}`} key={followedUser.id} className="user-list-card">
-                    <img src={followedUser.avatar || getDefaultAvatar(followedUser.username)} alt={followedUser.username} className="user-list-avatar" />
+                    <img src={followedUser.avatar || getDefaultAvatar(followedUser.username)} alt={followedUser.username} className="user-list-avatar" loading="lazy" decoding="async" />
                     <div className="user-list-info">
                       <span className="user-list-name">u/{followedUser.username}</span>
                       <span className="user-list-karma">{followedUser.karma} karma</span>

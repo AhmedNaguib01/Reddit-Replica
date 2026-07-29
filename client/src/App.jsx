@@ -32,6 +32,9 @@ const LoginModal = lazy(() => import('./components/auth/LoginModal'));
 
 import Header from './components/layout/Header';
 import LoadingBar from './components/layout/LoadingBar';
+import ScrollToTop from './components/common/ScrollToTop';
+import { RouteFallback } from './components/common/LoadingSkeleton';
+import { installRoutePrefetching } from './utils/routePrefetch';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { LoadingProvider } from './context/LoadingContext';
@@ -52,6 +55,9 @@ function App() {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved ? JSON.parse(saved) : false;
   });
+
+  // Start fetching a route's chunk as soon as the user shows intent to visit it
+  useEffect(() => installRoutePrefetching(), []);
 
   // Handle window resize to auto-collapse on mobile
   useEffect(() => {
@@ -99,6 +105,7 @@ function App() {
           <ToastProvider>
             <LoadingProvider>
               <Router>
+            <ScrollToTop />
             <div className="app">
             <Header 
               onLoginClick={openLogin} 
@@ -107,7 +114,7 @@ function App() {
             />
             <LoadingBar />
 
-          <Suspense fallback={<div className="route-loading" />}>
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<HomePage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />
             <Route path="/r/popular" element={<PopularPage onAuthAction={openLogin} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={toggleSidebar} />} />

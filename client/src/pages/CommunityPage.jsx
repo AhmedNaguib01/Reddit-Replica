@@ -109,7 +109,7 @@ const CommunityPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =>
       <div className="community-page page-layout">
         <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
         <div className="page-content-wrapper">
-          <div style={{ display: 'flex', flex: 1, flexDirection: 'column', width: '100%', maxWidth: '1010px' }}>
+          <div className="page-content column">
             <div className="skeleton" style={{ height: '180px', width: '100%' }} />
             <div className="page-main-area">
               <main className="page-main-content">
@@ -133,7 +133,7 @@ const CommunityPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar }) =>
       <Sidebar isCollapsed={isSidebarCollapsed} onToggle={onToggleSidebar} />
       
       <div className="page-content-wrapper">
-        <div style={{ display: 'flex', flex: 1, flexDirection: 'column', width: '100%', maxWidth: '1010px' }}>
+        <div className="page-content column">
           <CommunityHeader 
             name={communityData.name}
             title={communityData.title}

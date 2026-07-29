@@ -163,9 +163,11 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
     }
   };
 
-  // Navigate to post detail
+  // Navigate to post detail. The feed already holds the full post, so it is
+  // handed over in router state and the detail page can paint immediately
+  // instead of waiting on its own fetch.
   const handlePostClick = () => {
-    navigate(`/post/${post.id}`);
+    navigate(`/post/${post.id}`, { state: { post: localPost } });
   };
 
   // Handle share button click

@@ -333,6 +333,57 @@
   background-color: var(--color-bg-hover);
 }
 
+/* "Coming soon" bubble shown when Get App is clicked - there is no app yet */
+/* No `display` here on purpose: the element also carries .desktop-only, which
+   hides it below 960px by setting display. Overriding it would bring the button
+   back on mobile. */
+.get-app-wrapper {
+  position: relative;
+}
+
+.coming-soon-badge {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translate(-50%, -4px);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-text-primary);
+  color: var(--color-bg-card);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+  z-index: 100;
+}
+
+.coming-soon-badge.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+/* Little arrow pointing back up at the button */
+.coming-soon-badge.visible::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: var(--color-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coming-soon-badge {
+    transition: none;
+  }
+}
+
 /* Guest Menu (Three Dots) */
 .guest-menu-container {
   position: relative;

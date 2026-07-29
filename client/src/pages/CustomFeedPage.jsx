@@ -131,7 +131,7 @@ const CustomFeedPage = ({ isSidebarCollapsed, onToggleSidebar }) => {
                     key={community._id} 
                     className="feed-community-chip"
                   >
-                    <img src={community.iconUrl} alt="" />
+                    <img src={community.iconUrl} alt="" loading="lazy" decoding="async" />
                     r/{community.name}
                   </Link>
                 ))}

@@ -123,7 +123,8 @@ button:disabled {
   }
 }
 
-/* Main page layout - sidebar sticks to left */
+/* Main page layout - sidebar pinned to the left, content centred in the space
+   that remains. */
 .page-layout {
   display: flex;
   background-color: var(--color-bg-page);
@@ -142,6 +143,12 @@ button:disabled {
   max-width: 1010px;
 }
 
+/* Community pages stack a header above the columns */
+.page-content.column {
+  flex: 1;
+  flex-direction: column;
+}
+
 .page-main-area {
   display: flex;
   flex: 1;
@@ -152,6 +159,31 @@ button:disabled {
 .page-main-content {
   flex: 1;
   max-width: 740px;
+}
+
+/* On a wide or zoomed-out window the content column would otherwise stay at
+   1010px and leave a growing band of empty page background on either side of
+   it - most obvious as the strip between the sidebar and the first card. Letting
+   the column widen puts that space to use instead of relocating it, while the
+   caps keep the feed from stretching to an unreadable line length. */
+@media (min-width: 1600px) {
+  .page-content {
+    max-width: 1240px;
+  }
+
+  .page-main-content {
+    max-width: 900px;
+  }
+}
+
+@media (min-width: 2100px) {
+  .page-content {
+    max-width: 1500px;
+  }
+
+  .page-main-content {
+    max-width: 1120px;
+  }
 }
 
 .page-right-sidebar {
@@ -333,8 +365,38 @@ button:disabled {
   }
 }
 
-/* Placeholder shown while a lazily-loaded route chunk is fetched. Holds the
-   viewport height so the header does not jump as the page swaps in. */
+/* Shown while a lazily-loaded route chunk is fetched. Reserves the viewport
+   height so the header does not jump as the page swaps in, and centres the
+   skeleton on roughly the column width the real pages use. */
 .route-loading {
   min-height: 100vh;
+  padding: 16px;
+}
+
+.route-loading-main {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* End-of-feed marker. The observer in PostList reveals the next batch when this
+   scrolls into range; the button is the fallback and the keyboard path. */
+.post-list-sentinel {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 32px;
+}
+
+.btn-load-more {
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-load-more:hover {
+  background: var(--color-bg-hover);
 }

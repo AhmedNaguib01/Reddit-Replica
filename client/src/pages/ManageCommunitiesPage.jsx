@@ -129,7 +129,7 @@ const ManageCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSideb
                           src={community.iconUrl || `https://placehold.co/56/ff4500/white?text=${community.name?.charAt(0) || 'C'}`} 
                           alt={community.name} 
                           className="community-card-icon"
-                        />
+                        loading="lazy" decoding="async" />
                         <h3 className="community-card-name">{community.name || `r/${community.id}`}</h3>
                         <p className="community-card-desc">{community.description || 'No description'}</p>
                         <span className="community-card-members">{community.members || community.memberCount || 0} members</span>

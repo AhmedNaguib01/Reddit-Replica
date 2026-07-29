@@ -139,7 +139,7 @@ const AllCommunitiesPage = ({ onAuthAction, isSidebarCollapsed, onToggleSidebar 
                         src={community.iconUrl} 
                         alt={community.name} 
                         className="community-card-icon"
-                      />
+                      loading="lazy" decoding="async" />
                       <h3 className="community-card-name">{community.name}</h3>
                       <p className="community-card-desc">{community.description}</p>
                       <span className="community-card-members">{community.members} members</span>

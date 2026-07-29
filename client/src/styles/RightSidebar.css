@@ -41,6 +41,34 @@
   padding: 0;
 }
 
+/* "See more" used to grow the widget past the bottom of the window, so reading
+   the full list meant scrolling the entire home page. The expanded list now
+   scrolls inside itself and stays within the viewport. */
+.community-list.expanded {
+  max-height: min(420px, 50vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.community-list.expanded::-webkit-scrollbar {
+  width: 6px;
+}
+
+.community-list.expanded::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.community-list.expanded::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.community-list.expanded::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-secondary);
+}
+
 .community-item {
   display: flex;
   align-items: center;

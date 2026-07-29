@@ -71,3 +71,14 @@ export const CommentListSkeleton = ({ count = 5 }) => (
     ))}
   </>
 );
+
+// Shown while a lazily-loaded route chunk is still arriving. An empty
+// placeholder here read as a blank page in the moment after the URL changed, so
+// this mirrors the usual page shape instead.
+export const RouteFallback = () => (
+  <div className="route-loading">
+    <div className="route-loading-main">
+      <PostListSkeleton count={3} />
+    </div>
+  </div>
+);

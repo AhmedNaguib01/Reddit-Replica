@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/reddit.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Avatars, community icons and post images are served from these hosts.
+         Opening the connections up front removes a DNS + TLS round trip from
+         the first image each one serves. -->
+    <link rel="preconnect" href="https://ui-avatars.com" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+    <link rel="dns-prefetch" href="https://placehold.co" />
+
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-TZ54CK4RYX"></script>
     <script>
@@ -13,8 +21,8 @@
       gtag('config', 'G-TZ54CK4RYX');
     </script>
     <title>Reddit</title>
-    <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Google Identity Services is loaded on demand when the login modal
+         opens; see src/utils/googleIdentity.js -->
   </head>
   <body>
     <div id="root"></div>

@@ -2,10 +2,33 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { X, ArrowLeft } from 'lucide-react';
+import { loadGoogleIdentity } from '../../utils/googleIdentity';
 import '../../styles/LoginModal.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+// The slot Google renders its button into, plus the two states the old markup
+// had no answer for: the script still arriving, and the script never arriving.
+// When it is genuinely unavailable the whole block disappears - including the
+// "OR" divider - so the modal reads as a plain email form rather than a broken
+// one.
+const GoogleSignInBlock = ({ slotId, status, signingIn }) => {
+  if (!GOOGLE_CLIENT_ID || status === 'unavailable') return null;
+
+  return (
+    <>
+      <div className="auth-buttons">
+        <div id={slotId} className="google-btn-container"></div>
+        {(status === 'idle' || status === 'loading') && (
+          <div className="google-btn-placeholder" aria-label="Loading Google sign-in" />
+        )}
+        {signingIn && <p className="google-loading">Signing in with Google...</p>}
+      </div>
+      <div className="divider"><span>OR</span></div>
+    </>
+  );
+};
 
 const LoginModal = ({ isOpen, onClose }) => {
   const [mode, setMode] = useState('login'); // 'login', 'signup-email', 'signup-details', 'forgot-password', 'forgot-success', 'forgot-google'
@@ -15,6 +38,8 @@ const LoginModal = ({ isOpen, onClose }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  // 'idle' | 'loading' | 'ready' | 'unavailable' - drives the Google button slot
+  const [googleScript, setGoogleScript] = useState('idle');
   const { login } = useAuth();
 
   const resetForm = () => {
@@ -65,9 +90,30 @@ const LoginModal = ({ isOpen, onClose }) => {
     }
   }, [login]);
 
-  // Initialize Google Sign-In
+  // Fetch the Google script the first time the modal is opened. Previously this
+  // effect read window.google once and gave up if the script had not arrived
+  // yet, which left the button missing with no explanation.
   useEffect(() => {
-    if (!isOpen || !GOOGLE_CLIENT_ID || !window.google) return;
+    if (!isOpen || !GOOGLE_CLIENT_ID) return;
+
+    let cancelled = false;
+    setGoogleScript(current => (current === 'ready' ? current : 'loading'));
+
+    loadGoogleIdentity()
+      .then(() => { if (!cancelled) setGoogleScript('ready'); })
+      .catch(err => {
+        if (cancelled) return;
+        // Expected when the script is blocked - email sign-in still works
+        console.warn('Google Sign-In unavailable:', err.message);
+        setGoogleScript('unavailable');
+      });
+
+    return () => { cancelled = true; };
+  }, [isOpen]);
+
+  // Render the Google button once the script is ready and the slot exists
+  useEffect(() => {
+    if (!isOpen || !GOOGLE_CLIENT_ID || googleScript !== 'ready') return;
 
     // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
@@ -100,11 +146,12 @@ const LoginModal = ({ isOpen, onClose }) => {
         }
       } catch (err) {
         console.error('Google Sign-In initialization error:', err);
+        setGoogleScript('unavailable');
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [isOpen, mode, handleGoogleResponse]);
+  }, [isOpen, mode, googleScript, handleGoogleResponse]);
 
   // Check if email is available and continue to next step
   const handleEmailContinue = async (e) => {
@@ -314,15 +361,11 @@ const LoginModal = ({ isOpen, onClose }) => {
               </p>
             </div>
 
-            {GOOGLE_CLIENT_ID && (
-              <>
-                <div className="auth-buttons">
-                  <div id="google-signin-btn-login" className="google-btn-container"></div>
-                  {googleLoading && <p className="google-loading">Signing in with Google...</p>}
-                </div>
-                <div className="divider"><span>OR</span></div>
-              </>
-            )}
+            <GoogleSignInBlock
+              slotId="google-signin-btn-login"
+              status={googleScript}
+              signingIn={googleLoading}
+            />
 
             <form className="login-form" onSubmit={handleLogin}>
               {error && <div className="error-message">{error}</div>}
@@ -374,15 +417,11 @@ const LoginModal = ({ isOpen, onClose }) => {
               </p>
             </div>
 
-            {GOOGLE_CLIENT_ID && (
-              <>
-                <div className="auth-buttons">
-                  <div id="google-signin-btn-signup" className="google-btn-container"></div>
-                  {googleLoading && <p className="google-loading">Signing in with Google...</p>}
-                </div>
-                <div className="divider"><span>OR</span></div>
-              </>
-            )}
+            <GoogleSignInBlock
+              slotId="google-signin-btn-signup"
+              status={googleScript}
+              signingIn={googleLoading}
+            />
 
             <form className="login-form" onSubmit={handleEmailContinue}>
               {error && <div className="error-message">{error}</div>}
