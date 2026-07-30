@@ -5,7 +5,12 @@ import { communitiesAPI, customFeedsAPI } from '../services/api';
 const SidebarContext = createContext();
 
 export const SidebarProvider = ({ children }) => {
-  const { currentUser } = useAuth();
+  // Keyed on the token, not the user object: all three requests below are
+  // scoped to whoever the token belongs to, and a token that has not changed
+  // cannot return different data. Keying on `currentUser` meant the initial
+  // /auth/me handing back a fresh object for the same person fired the whole
+  // set a second time on every load.
+  const { authToken } = useAuth();
   const [recentCommunities, setRecentCommunities] = useState([]);
   const [joinedCommunities, setJoinedCommunities] = useState([]);
   const [customFeeds, setCustomFeeds] = useState([]);
@@ -13,7 +18,7 @@ export const SidebarProvider = ({ children }) => {
 
   // Fetch all sidebar data fresh from server
   const fetchSidebarData = useCallback(async () => {
-    if (!currentUser) {
+    if (!authToken) {
       setRecentCommunities([]);
       setJoinedCommunities([]);
       setCustomFeeds([]);
@@ -37,7 +42,7 @@ export const SidebarProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [authToken]);
 
   // Fetch on mount and when user changes
   useEffect(() => {

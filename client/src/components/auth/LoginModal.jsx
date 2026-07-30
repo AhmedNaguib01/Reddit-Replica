@@ -77,15 +77,19 @@ const LoginModal = ({ isOpen, onClose }) => {
       const data = await res.json();
 
       if (res.ok) {
+        // Signing in unmounts this modal, so nothing after it should touch
+        // state - the old `finally` reset a spinner on a component that was
+        // already gone
         login(data.user, data.token);
         handleClose();
-      } else {
-        setError(data.message || 'Google authentication failed');
+        return;
       }
+
+      setError(data.message || 'Google authentication failed');
+      setGoogleLoading(false);
     } catch (err) {
       console.error('Google auth error:', err);
       setError('Network error. Please try again.');
-    } finally {
       setGoogleLoading(false);
     }
   }, [login]);
@@ -232,13 +236,14 @@ const LoginModal = ({ isOpen, onClose }) => {
       if (response.ok) {
         login(data.user, data.token);
         handleClose();
-      } else {
-        setError(data.message || 'Registration failed');
+        return;
       }
+
+      setError(data.message || 'Registration failed');
+      setLoading(false);
     } catch (error) {
       console.error('Signup error:', error);
       setError('Network error. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
@@ -267,13 +272,14 @@ const LoginModal = ({ isOpen, onClose }) => {
       if (response.ok) {
         login(data.user, data.token);
         handleClose();
-      } else {
-        setError(data.message || 'Login failed');
+        return;
       }
+
+      setError(data.message || 'Login failed');
+      setLoading(false);
     } catch (error) {
       console.error('Login error:', error);
       setError('Network error. Please try again.');
-    } finally {
       setLoading(false);
     }
   };

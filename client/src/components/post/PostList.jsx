@@ -18,11 +18,18 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
-  const { currentUser, loading: authLoading } = useAuth();
+  const { authToken, loading: authLoading } = useAuth();
   const hasFetched = useRef(false);
+  const lastFilter = useRef(filterBySubreddit);
   const sentinelRef = useRef(null);
 
-  // Fetch posts and communities immediately (don't wait for auth)
+  // Fetch posts and communities immediately (don't wait for auth).
+  //
+  // Keyed on the token rather than on `currentUser`: what the per-viewer fields
+  // in the response depend on (a post's `userVote`) is which token the request
+  // carried. Signing in or out changes it and has to refetch; the initial
+  // /auth/me merely resolving the same token does not. The skeleton is skipped
+  // on that refetch, so the feed swaps in place instead of collapsing.
   useEffect(() => {
     let isMounted = true;
     
@@ -43,7 +50,13 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
         if (isMounted) {
           setPosts(postsData);
           setCommunities(communitiesData);
-          setVisibleCount(INITIAL_VISIBLE);
+          // A different feed starts from the top again, but a refetch of the
+          // same one - which is what signing in triggers - must not throw away
+          // however far the reader had already scrolled
+          if (lastFilter.current !== filterBySubreddit) {
+            lastFilter.current = filterBySubreddit;
+            setVisibleCount(INITIAL_VISIBLE);
+          }
           setError(null);
           setLoading(false);
           hasFetched.current = true;
@@ -62,15 +75,15 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
     return () => {
       isMounted = false;
     };
-  }, [filterBySubreddit]);
+  }, [filterBySubreddit, authToken]);
 
   // Fetch joined communities separately after auth is ready (non-blocking)
   useEffect(() => {
-    if (authLoading || !currentUser) {
+    if (authLoading || !authToken) {
       setJoinedCommunities([]);
       return;
     }
-    
+
     let isMounted = true;
     
     communitiesAPI.getJoinedCached()
@@ -88,7 +101,7 @@ const PostList = ({ filterBySubreddit, filterByAuthor, sortBy, onAuthRequired })
     return () => {
       isMounted = false;
     };
-  }, [currentUser, authLoading]);
+  }, [authToken, authLoading]);
   
   // Create a Set of joined community names for O(1) lookup
   const joinedCommunityNames = useMemo(() => {

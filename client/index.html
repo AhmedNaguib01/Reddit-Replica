@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/reddit.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- The theme is stored in localStorage but React only applies it in an
+         effect, which lands after the first paint - long enough for anyone on
+         dark mode to get a full white frame on every load. Setting the class
+         here, before any of the page is drawn, removes that flash. App.jsx
+         stays the owner of the value; this only mirrors it early. -->
+    <script>
+      try {
+        if (JSON.parse(localStorage.getItem('darkMode'))) {
+          document.documentElement.classList.add('dark-mode');
+        }
+      } catch (e) {}
+    </script>
+
     <!-- Avatars, community icons and post images are served from these hosts.
          Opening the connections up front removes a DNS + TLS round trip from
          the first image each one serves. -->
