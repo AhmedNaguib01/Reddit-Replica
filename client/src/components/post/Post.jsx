@@ -30,7 +30,6 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
   const [joined, setJoined] = useState(initialJoined || false);
   const [isDeleting, setIsDeleting] = useState(false);
   const optionsRef = useRef(null);
-  const lastServerVote = useRef(post.userVote || null);
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { addJoinedCommunity, removeJoinedCommunity } = useSidebar();
@@ -41,19 +40,6 @@ const Post = ({ post, onAuthRequired, onVoteUpdate, onPostDeleted, onPostUpdated
   useEffect(() => {
     setLocalPost(post);
   }, [post.title, post.content, post.type, post.editedAt]);
-
-  // Vote state is otherwise owned by this component so an optimistic click is
-  // not undone by the parent re-rendering. The one case where the server knows
-  // better is a refetch under a different viewer - signing in has to light up
-  // the arrows on posts this user had already voted on, which until now only
-  // happened because logging in reloaded the page. Comparing against the last
-  // value the server sent keeps a local click from being reverted.
-  useEffect(() => {
-    const serverVote = post.userVote || null;
-    if (serverVote === lastServerVote.current) return;
-    lastServerVote.current = serverVote;
-    setVoteState(serverVote);
-  }, [post.userVote]);
 
   // Close options menu when clicking outside
   useEffect(() => {

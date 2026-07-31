@@ -33,22 +33,10 @@ const Comment = ({ comment, onAuthRequired, onReplyAdded, onCommentUpdated, onCo
   const [isDeleted, setIsDeleted] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const optionsRef = useRef(null);
-  const lastServerVote = useRef(comment.userVote || null);
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-
+  
   const isOwner = currentUser && currentUser.username === comment.author;
-
-  // Adopt the server's vote when it changes for a comment that stays mounted -
-  // signing in refetches the thread under the new viewer, and the arrows have
-  // to follow. Local clicks are left alone, since only a value that differs
-  // from the last one the server sent gets applied.
-  useEffect(() => {
-    const serverVote = comment.userVote || null;
-    if (serverVote === lastServerVote.current) return;
-    lastServerVote.current = serverVote;
-    setVoteState(serverVote);
-  }, [comment.userVote]);
 
   // Close options menu when clicking outside
   useEffect(() => {
